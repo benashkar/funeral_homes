@@ -1,0 +1,51 @@
+{% extends "base.html" %}
+{% block title %}Scrape Stats{% endblock %}
+{% block content %}
+<h1>Scrape Stats</h1>
+
+<h2 style="margin: 20px 0 10px;">Obituaries by Market</h2>
+<table>
+    <thead>
+        <tr>
+            <th>Market (site_id)</th>
+            <th>Total Obits</th>
+            <th>Earliest</th>
+            <th>Latest</th>
+        </tr>
+    </thead>
+    <tbody>
+        {% for s in site_stats %}
+        <tr>
+            <td>{{ s.site_id }}</td>
+            <td>{{ "{:,}".format(s.total_obits) }}</td>
+            <td>{{ s.earliest_obit or "" }}</td>
+            <td>{{ s.latest_obit or "" }}</td>
+        </tr>
+        {% endfor %}
+    </tbody>
+</table>
+
+<h2 style="margin: 20px 0 10px;">Recent Scrape Runs</h2>
+<table>
+    <thead>
+        <tr>
+            <th>Date</th>
+            <th>Market</th>
+            <th>Found</th>
+            <th>New</th>
+            <th>Errors</th>
+        </tr>
+    </thead>
+    <tbody>
+        {% for r in recent_runs %}
+        <tr>
+            <td>{{ r.run_date }}</td>
+            <td>{{ r.site_id }}</td>
+            <td>{{ r.obits_found }}</td>
+            <td>{{ r.obits_new }}</td>
+            <td style="color: {% if r.errors %}#e74c3c{% else %}#27ae60{% endif %}">{{ r.errors or "None" }}</td>
+        </tr>
+        {% endfor %}
+    </tbody>
+</table>
+{% endblock %}
