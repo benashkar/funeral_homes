@@ -19,6 +19,7 @@ def _get_conn():
         user=creds["DB_USER"],
         password=creds["DB_PASSWORD"],
         database=creds["DB_NAME"],
+        connect_timeout=10,
     )
 
 
@@ -40,88 +41,96 @@ def create_app():
 
     @app.route("/")
     def index():
-        page = request.args.get("page", 1, type=int)
-        search = request.args.get("search", "").strip()
-        site_id = request.args.get("site_id", "").strip()
+        try:
+            page = request.args.get("page", 1, type=int)
+            search = request.args.get("search", "").strip()
+            site_id = request.args.get("site_id", "").strip()
 
-        conn = _get_conn()
-        cur = conn.cursor(dictionary=True)
+            conn = _get_conn()
+            cur = conn.cursor(dictionary=True)
 
-        # Build query
-        where_clauses = []
-        params = []
-        if search:
-            where_clauses.append("(deceased_name LIKE %s OR funeral_home LIKE %s)")
-            params.extend([f"%{search}%", f"%{search}%"])
-        if site_id:
-            where_clauses.append("site_id = %s")
-            params.append(site_id)
+            # Build query
+            where_clauses = []
+            params = []
+            if search:
+                where_clauses.append("(deceased_name LIKE %s OR funeral_home LIKE %s)")
+                params.extend([f"%{search}%", f"%{search}%"])
+            if site_id:
+                where_clauses.append("site_id = %s")
+                params.append(site_id)
 
-        where = ""
-        if where_clauses:
-            where = "WHERE " + " AND ".join(where_clauses)
+            where = ""
+            if where_clauses:
+                where = "WHERE " + " AND ".join(where_clauses)
 
-        # Count
-        cur.execute(f"SELECT COUNT(*) as cnt FROM obituaries {where}", params)
-        total = cur.fetchone()["cnt"]
-        total_pages = max(1, (total + PER_PAGE - 1) // PER_PAGE)
+            # Count
+            cur.execute(f"SELECT COUNT(*) as cnt FROM obituaries {where}", params)
+            total = cur.fetchone()["cnt"]
+            total_pages = max(1, (total + PER_PAGE - 1) // PER_PAGE)
 
-        # Fetch page
-        offset = (page - 1) * PER_PAGE
-        cur.execute(
-            f"SELECT * FROM obituaries {where} ORDER BY published_date DESC, id DESC LIMIT %s OFFSET %s",
-            params + [PER_PAGE, offset],
-        )
-        obits = cur.fetchall()
+            # Fetch page
+            offset = (page - 1) * PER_PAGE
+            cur.execute(
+                f"SELECT * FROM obituaries {where} ORDER BY published_date DESC, id DESC LIMIT %s OFFSET %s",
+                params + [PER_PAGE, offset],
+            )
+            obits = cur.fetchall()
 
-        # Get distinct site_ids for filter
-        cur.execute("SELECT DISTINCT site_id FROM obituaries ORDER BY site_id")
-        sites = [r["site_id"] for r in cur.fetchall()]
+            # Get distinct site_ids for filter
+            cur.execute("SELECT DISTINCT site_id FROM obituaries ORDER BY site_id")
+            sites = [r["site_id"] for r in cur.fetchall()]
 
-        cur.close()
-        conn.close()
+            cur.close()
+            conn.close()
 
-        return render_template(
-            "index.html",
-            obits=obits,
-            page=page,
-            total_pages=total_pages,
-            total=total,
-            sites=sites,
-            search=search,
-            site_id=site_id,
-        )
+            return render_template(
+                "index.html",
+                obits=obits,
+                page=page,
+                total_pages=total_pages,
+                total=total,
+                sites=sites,
+                search=search,
+                site_id=site_id,
+            )
+        except Exception as e:
+            logger.error("Index route error: %s", e)
+            return f"<h1>Database Error</h1><p>{e}</p>", 503
 
     @app.route("/stats")
     def stats():
-        conn = _get_conn()
-        cur = conn.cursor(dictionary=True)
+        try:
+            conn = _get_conn()
+            cur = conn.cursor(dictionary=True)
 
-        cur.execute("""
-            SELECT site_id, COUNT(*) as total_obits,
-                   MAX(published_date) as latest_obit,
-                   MIN(published_date) as earliest_obit
-            FROM obituaries
-            GROUP BY site_id
-            ORDER BY total_obits DESC
-        """)
-        site_stats = cur.fetchall()
+            cur.execute("""
+                SELECT site_id, COUNT(*) as total_obits,
+                       MAX(published_date) as latest_obit,
+                       MIN(published_date) as earliest_obit
+                FROM obituaries
+                GROUP BY site_id
+                ORDER BY total_obits DESC
+            """)
+            site_stats = cur.fetchall()
 
-        cur.execute("""
-            SELECT site_id, run_date, obits_found, obits_new, errors
-            FROM scrape_log
-            ORDER BY run_date DESC, id DESC
-            LIMIT 100
-        """)
-        recent_runs = cur.fetchall()
+            cur.execute("""
+                SELECT site_id, run_date, obits_found, obits_new, errors
+                FROM scrape_log
+                ORDER BY run_date DESC, id DESC
+                LIMIT 100
+            """)
+            recent_runs = cur.fetchall()
 
-        cur.close()
-        conn.close()
+            cur.close()
+            conn.close()
 
-        return render_template(
-            "stats.html",
-            site_stats=site_stats,
-            recent_runs=recent_runs,
-        )
+            return render_template(
+                "stats.html",
+                site_stats=site_stats,
+                recent_runs=recent_runs,
+            )
+        except Exception as e:
+            logger.error("Stats route error: %s", e)
+            return f"<h1>Database Error</h1><p>{e}</p>", 503
 
     return app

@@ -31,7 +31,12 @@ def _fetch_from_aws():
     """
     try:
         import boto3
-        client = boto3.client("secretsmanager", region_name=AWS_REGION)
+        from botocore.config import Config
+        boto_config = Config(
+            connect_timeout=5, read_timeout=5,
+            retries={"max_attempts": 1},
+        )
+        client = boto3.client("secretsmanager", region_name=AWS_REGION, config=boto_config)
         resp = client.get_secret_value(SecretId=SECRET_ID)
         secret = json.loads(resp["SecretString"])
         logger.info("[OK] Loaded DB credentials from AWS Secrets Manager")
@@ -49,15 +54,12 @@ def _fetch_from_env():
 
     Returns:
         dict with DB_HOST, DB_PORT, DB_USER, DB_PASSWORD.
-
-    Raises:
-        KeyError if DB_USER or DB_PASSWORD are not set.
     """
     creds = {
         "DB_HOST": os.environ.get("DB_HOST") or "db99.rds.blockshopper.com",
         "DB_PORT": os.environ.get("DB_PORT") or "3306",
-        "DB_USER": os.environ["DB_USER"],
-        "DB_PASSWORD": os.environ["DB_PASSWORD"],
+        "DB_USER": os.environ.get("DB_USER") or "root",
+        "DB_PASSWORD": os.environ.get("DB_PASSWORD") or "",
     }
     logger.info("[OK] Loaded DB credentials from environment variables")
     return creds
