@@ -30,11 +30,11 @@ class LegacyScraper:
         market: Dict from markets.json with keys site_id, state, legacy_slug, type.
     """
 
-    def __init__(self, market):
+    def __init__(self, market, session=None):
         self.market = market
         self.site_id = market["site_id"]
         self.listing_url = build_listing_url(market)
-        self.session = create_session()
+        self.session = session or create_session()
 
     def _extract_obit_links(self, html):
         """Parse the listing page HTML and return unique obit detail URLs.
