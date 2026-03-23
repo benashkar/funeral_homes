@@ -1,5 +1,7 @@
 """Main scraper for Legacy.com obituary listing and detail pages."""
 
+import json
+
 from bs4 import BeautifulSoup
 
 from scraper.url_builder import build_listing_url
@@ -9,7 +11,7 @@ from utils.rate_limiter import create_session, polite_get
 
 logger = get_logger(__name__)
 
-# CSS selectors for the listing page — each obit card has a link to the detail page.
+# CSS selectors for the listing page — fallback if JSON-LD is missing.
 # Legacy.com listing pages use personalization-link anchors inside result cards.
 OBIT_CARD_LINK_SELECTOR = (
     "a[href*='/us/obituaries/name/'],"           # standard obit detail links
@@ -37,6 +39,10 @@ class LegacyScraper:
     def _extract_obit_links(self, html):
         """Parse the listing page HTML and return unique obit detail URLs.
 
+        Legacy.com embeds obituary URLs in Schema.org JSON-LD (application/ld+json)
+        as an ItemList. We extract from there first, then fall back to CSS selectors
+        for anchor tags.
+
         Args:
             html: Raw HTML string of the listing page.
 
@@ -44,19 +50,37 @@ class LegacyScraper:
             List of absolute URL strings.
         """
         soup = BeautifulSoup(html, "lxml")
-        links = soup.select(OBIT_CARD_LINK_SELECTOR)
-
         urls = set()
+
+        # Primary: extract from JSON-LD structured data.
+        # Detail URLs require the ?id= param to resolve (422 without it).
+        for script in soup.find_all("script", type="application/ld+json"):
+            try:
+                data = json.loads(script.string or "")
+            except (json.JSONDecodeError, TypeError):
+                continue
+            main_entity = data.get("mainEntity") if isinstance(data, dict) else None
+            if not main_entity:
+                continue
+            for item in main_entity.get("itemListElement", []):
+                item_url = item.get("url") or ""
+                if "/us/obituaries/name/" in item_url.lower():
+                    urls.add(item_url)
+
+        if urls:
+            logger.info("[%s] Extracted %d URLs from JSON-LD", self.site_id, len(urls))
+            return list(urls)
+
+        # Fallback: CSS selectors on anchor tags
+        links = soup.select(OBIT_CARD_LINK_SELECTOR)
         for link in links:
             href = link.get("href", "")
             if not href:
                 continue
-            # Resolve relative URLs
             if href.startswith("/"):
                 href = LEGACY_DOMAIN + href
-            # Only keep legacy.com obituary detail links
             if "/us/obituaries/name/" in href.lower():
-                urls.add(href.split("?")[0])  # strip query params for dedup
+                urls.add(href.split("?")[0])
 
         return list(urls)
 

@@ -69,6 +69,9 @@ def get_db_credentials():
     """Get database connection credentials (cached after first call).
 
     Priority: AWS Secrets Manager -> environment variables / .env
+    Local override: if DB_HOST is set in env, it overrides the AWS value.
+    This is needed because the VPC endpoint hostname from AWS is only
+    reachable from Render (via PrivateLink), not from local machines.
 
     Returns:
         dict with keys: DB_HOST, DB_PORT, DB_USER, DB_PASSWORD, DB_NAME.
@@ -80,6 +83,13 @@ def get_db_credentials():
     creds = _fetch_from_aws()
     if creds is None:
         creds = _fetch_from_env()
+
+    # Local dev override: env DB_HOST takes precedence over AWS value
+    # (VPC endpoint is unreachable locally; use direct IP via .env)
+    env_host = os.environ.get("DB_HOST")
+    if env_host:
+        creds["DB_HOST"] = env_host
+        logger.info("[OK] Using DB_HOST from env: %s", env_host)
 
     # DB_NAME is always from env — it's project-specific, not a secret
     creds["DB_NAME"] = os.environ.get("DB_NAME") or "funeral_homes"
