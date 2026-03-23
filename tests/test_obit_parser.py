@@ -1,4 +1,8 @@
-"""Tests for scraper.obit_parser — happy path and missing fields."""
+"""Tests for scraper.obit_parser — happy path and missing fields.
+
+The parser extracts data from JSON-LD script blocks (not CSS selectors)
+because Legacy.com detail pages are JS-rendered.
+"""
 
 import sys
 import os
@@ -10,33 +14,63 @@ from bs4 import BeautifulSoup
 from scraper.obit_parser import parse_name, parse_dates, parse_funeral_home, parse_obit_text
 
 
-# --- Fixtures: realistic Legacy.com obit page HTML fragments ---
+# --- Fixtures: realistic Legacy.com JSON-LD structured data ---
 
 FULL_OBIT_HTML = """
 <html>
 <head>
-    <meta property="article:published_time" content="2026-03-01T12:00:00Z">
+    <script type="application/ld+json">
+    {
+        "@context": "http://schema.org",
+        "@type": "NewsArticle",
+        "articleBody": "John Michael Smith, 81, of Springfield, passed away peacefully on February 28, 2026. He is survived by his wife, Mary, and three children.",
+        "datePublished": "2026-03-01T12:00:00.000Z",
+        "headline": "John Michael Smith Obituary"
+    }
+    </script>
+    <script type="application/ld+json">
+    {
+        "@context": "http://schema.org",
+        "@type": "Person",
+        "name": "John Michael Smith",
+        "givenName": "John",
+        "familyName": "Smith",
+        "additionalName": "Michael",
+        "deathDate": "2026-2-28",
+        "birthDate": "1945-1-5"
+    }
+    </script>
+    <script type="application/ld+json">
+    {
+        "@context": "http://schema.org",
+        "@type": "BreadcrumbList",
+        "itemListElement": [
+            {"@type": "ListItem", "position": 1, "item": {"@id": "https://www.legacy.com", "name": "Home"}},
+            {"@type": "ListItem", "position": 2, "item": {"@id": "https://www.legacy.com/funeral-homes/listing/ohio", "name": "Ohio"}},
+            {"@type": "ListItem", "position": 3, "item": {"@id": "https://www.legacy.com/funeral-homes/listing/ohio/springfield", "name": "Springfield"}},
+            {"@type": "ListItem", "position": 4, "item": {"@id": "https://www.legacy.com/funeral-homes/ohio/springfield/greenfield-memorial-chapel/fh-1234", "name": "Greenfield Memorial Chapel"}}
+        ]
+    }
+    </script>
 </head>
-<body>
-    <h1 class="obit-name">John Michael Smith</h1>
-    <p class="obit-dates">January 5, 1945 - February 28, 2026</p>
-    <a data-component="FuneralHomeName">Greenfield Memorial Chapel</a>
-    <div class="obit-text">
-        <p>John Michael Smith, 81, of Springfield, passed away peacefully on February 28, 2026.</p>
-        <p>He is survived by his wife, Mary, and three children.</p>
-    </div>
-</body>
+<body></body>
 </html>
 """
 
 MINIMAL_OBIT_HTML = """
 <html>
-<head></head>
-<body>
-    <div class="obit-text">
-        <p>A beloved member of the community has passed away.</p>
-    </div>
-</body>
+<head>
+    <script type="application/ld+json">
+    {
+        "@context": "http://schema.org",
+        "@type": "NewsArticle",
+        "articleBody": "A beloved member of the community has passed away.",
+        "datePublished": "2026-03-15T00:00:00.000Z",
+        "headline": "Community Member Obituary"
+    }
+    </script>
+</head>
+<body></body>
 </html>
 """
 
@@ -55,6 +89,12 @@ def test_parse_name_missing():
     assert parse_name(soup) is None
 
 
+def test_parse_name_fallback_headline():
+    """When Person block is missing, falls back to NewsArticle headline."""
+    soup = BeautifulSoup(MINIMAL_OBIT_HTML, "lxml")
+    assert parse_name(soup) == "Community Member"
+
+
 # --- parse_dates tests ---
 
 def test_parse_dates_full():
@@ -71,16 +111,12 @@ def test_parse_dates_missing():
     assert dates["published"] is None
 
 
-def test_parse_dates_no_meta():
-    html = """
-    <html><head></head><body>
-        <p class="obit-dates">March 10, 2026</p>
-    </body></html>
-    """
-    soup = BeautifulSoup(html, "lxml")
+def test_parse_dates_no_person():
+    """Published date works even without Person schema."""
+    soup = BeautifulSoup(MINIMAL_OBIT_HTML, "lxml")
     dates = parse_dates(soup)
-    assert dates["death"] == date(2026, 3, 10)
-    assert dates["published"] is None
+    assert dates["death"] is None
+    assert dates["published"] is not None
 
 
 # --- parse_funeral_home tests ---

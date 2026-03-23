@@ -1,58 +1,42 @@
 """Stateless parsing functions for individual Legacy.com obituary pages.
 
-Each function takes a BeautifulSoup object of a single obit page and
-returns structured data. Missing fields return None, never raise.
+Legacy.com detail pages are JS-rendered, so CSS selectors on the raw HTML
+return nothing. Instead, all structured data is in JSON-LD script blocks:
+  - @type "NewsArticle" → articleBody, datePublished
+  - @type "Person" → name, deathDate
+  - Funeral home name in the BreadcrumbList (funeral-homes path segment)
+
+Each function takes a BeautifulSoup object and returns structured data.
+Missing fields return None, never raise.
 """
 
-import re
+import json
 from datetime import datetime
 
 from utils.logger import get_logger
 
 logger = get_logger(__name__)
 
-# --- CSS selectors for Legacy.com obit detail pages (2026) ---
-# These target the structured data in the obit detail view.
-# If Legacy changes their HTML, update these selectors first.
-NAME_SELECTOR = "h1.obit-name, h1[data-component='ObituaryName']"
-DATES_CONTAINER_SELECTOR = "p.obit-dates, span[data-component='ObituaryDates']"
-FUNERAL_HOME_SELECTOR = "a[data-component='FuneralHomeName'], div.fh-name a, span.funeral-home-name"
-OBIT_TEXT_SELECTOR = "div.obit-text, div[data-component='ObituaryText'], section.obituary-text"
 
-# Date patterns commonly seen in Legacy.com date strings
-# e.g. "January 15, 2026" or "Jan 15, 2026"
-DATE_PATTERN = re.compile(
-    r"([A-Z][a-z]+\.?\s+\d{1,2},?\s+\d{4})",
-    re.IGNORECASE
-)
-
-DATE_FORMATS = [
-    "%B %d, %Y",   # January 15, 2026
-    "%B %d %Y",    # January 15 2026
-    "%b %d, %Y",   # Jan 15, 2026
-    "%b. %d, %Y",  # Jan. 15, 2026
-]
-
-
-def _parse_date_string(text):
-    """Try to parse a date string using known Legacy.com formats.
+def _extract_jsonld(soup):
+    """Extract all JSON-LD blocks from the page, keyed by @type.
 
     Returns:
-        datetime.date or None.
+        dict mapping @type string to the parsed JSON dict.
     """
-    if not text:
-        return None
-    text = text.strip()
-    for fmt in DATE_FORMATS:
+    result = {}
+    for script in soup.find_all("script", type="application/ld+json"):
         try:
-            return datetime.strptime(text, fmt).date()
-        except ValueError:
+            data = json.loads(script.string or "")
+        except (json.JSONDecodeError, TypeError):
             continue
-    return None
+        if isinstance(data, dict) and "@type" in data:
+            result[data["@type"]] = data
+    return result
 
 
 def parse_name(soup):
-    """Extract the deceased's name from the obit page.
+    """Extract the deceased's name from JSON-LD Person block.
 
     Args:
         soup: BeautifulSoup object of a single obituary page.
@@ -60,20 +44,31 @@ def parse_name(soup):
     Returns:
         str or None.
     """
-    # Try the primary selectors for the name heading
-    el = soup.select_one(NAME_SELECTOR)
-    if el:
-        return el.get_text(strip=True)
-    logger.warning("Could not find name element on page")
+    blocks = _extract_jsonld(soup)
+
+    # Primary: Person schema has the canonical name
+    person = blocks.get("Person")
+    if person:
+        name = person.get("name") or ""
+        if name:
+            return name.strip()
+
+    # Fallback: NewsArticle headline
+    article = blocks.get("NewsArticle")
+    if article:
+        headline = article.get("headline") or ""
+        if headline:
+            return headline.replace(" Obituary", "").strip()
+
+    logger.warning("Could not find name in JSON-LD")
     return None
 
 
 def parse_dates(soup):
-    """Extract published and death dates from the obit page.
+    """Extract published and death dates from JSON-LD.
 
-    Legacy.com typically shows dates as a range like:
-    "January 5, 1945 - March 1, 2026"
-    or just a published date near the byline.
+    - Death date comes from Person.deathDate (e.g. "2026-3-21")
+    - Published date comes from NewsArticle.datePublished (ISO 8601)
 
     Args:
         soup: BeautifulSoup object of a single obituary page.
@@ -81,35 +76,44 @@ def parse_dates(soup):
     Returns:
         dict with keys 'published' and 'death', values are date or None.
     """
+    blocks = _extract_jsonld(soup)
     result = {"published": None, "death": None}
 
-    # Look for the dates container (birth-death range)
-    el = soup.select_one(DATES_CONTAINER_SELECTOR)
-    if el:
-        text = el.get_text(strip=True)
-        matches = DATE_PATTERN.findall(text)
-        if len(matches) >= 2:
-            # First date is birth/earlier, second is death
-            result["death"] = _parse_date_string(matches[-1])
-        elif len(matches) == 1:
-            result["death"] = _parse_date_string(matches[0])
+    # Death date from Person schema
+    person = blocks.get("Person")
+    if person:
+        death_str = person.get("deathDate") or ""
+        if death_str:
+            try:
+                # Format can be "2026-3-21" (no zero-padding)
+                parts = death_str.split("-")
+                if len(parts) == 3:
+                    result["death"] = datetime(
+                        int(parts[0]), int(parts[1]), int(parts[2])
+                    ).date()
+            except (ValueError, IndexError):
+                logger.warning("Could not parse deathDate: %s", death_str)
 
-    # Look for a published/posted date in meta tags
-    # Legacy often uses <meta property="article:published_time">
-    meta = soup.find("meta", property="article:published_time")
-    if meta and meta.get("content"):
-        try:
-            result["published"] = datetime.fromisoformat(
-                meta["content"].replace("Z", "+00:00")
-            ).date()
-        except (ValueError, TypeError):
-            pass
+    # Published date from NewsArticle schema
+    article = blocks.get("NewsArticle")
+    if article:
+        pub_str = article.get("datePublished") or ""
+        if pub_str:
+            try:
+                result["published"] = datetime.fromisoformat(
+                    pub_str.replace("Z", "+00:00")
+                ).date()
+            except (ValueError, TypeError):
+                pass
 
     return result
 
 
 def parse_funeral_home(soup):
-    """Extract the funeral home name from the obit page.
+    """Extract the funeral home name from JSON-LD BreadcrumbList.
+
+    Legacy.com embeds a BreadcrumbList with a path through funeral-homes.
+    The last item in that list is the funeral home name.
 
     Args:
         soup: BeautifulSoup object of a single obituary page.
@@ -117,14 +121,29 @@ def parse_funeral_home(soup):
     Returns:
         str or None.
     """
-    el = soup.select_one(FUNERAL_HOME_SELECTOR)
-    if el:
-        return el.get_text(strip=True)
+    for script in soup.find_all("script", type="application/ld+json"):
+        try:
+            data = json.loads(script.string or "")
+        except (json.JSONDecodeError, TypeError):
+            continue
+        if not isinstance(data, dict) or data.get("@type") != "BreadcrumbList":
+            continue
+        items = data.get("itemListElement", [])
+        # The specific funeral home entry has /fh-XXXXX in the URL
+        # (not /listing/ which is the category, not /obituaries/ which is the obit itself)
+        for item in items:
+            item_data = item.get("item", {})
+            item_id = item_data.get("@id") or ""
+            if "/funeral-homes/" in item_id and "/fh-" in item_id:
+                name = item_data.get("name") or ""
+                if name:
+                    return name.strip()
+
     return None
 
 
 def parse_obit_text(soup):
-    """Extract the full obituary text, stripped of HTML tags.
+    """Extract the full obituary text from JSON-LD NewsArticle.articleBody.
 
     Args:
         soup: BeautifulSoup object of a single obituary page.
@@ -132,11 +151,12 @@ def parse_obit_text(soup):
     Returns:
         str or None.
     """
-    el = soup.select_one(OBIT_TEXT_SELECTOR)
-    if el:
-        # get_text with separator to preserve paragraph breaks
-        text = el.get_text(separator="\n", strip=True)
-        if text:
-            return text
-    logger.warning("Could not find obituary text on page")
+    blocks = _extract_jsonld(soup)
+    article = blocks.get("NewsArticle")
+    if article:
+        body = article.get("articleBody") or ""
+        if body:
+            return body.strip()
+
+    logger.warning("Could not find obituary text in JSON-LD")
     return None

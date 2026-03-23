@@ -1,0 +1,96 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>funeral_homes — ERD</title>
+<script src="https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js"></script>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { background: #1a1a2e; color: #e0e0e0; font-family: 'Segoe UI', system-ui, sans-serif; padding: 2rem; }
+  header { text-align: center; margin-bottom: 2rem; border-bottom: 1px solid #333; padding-bottom: 1.5rem; }
+  header h1 { font-size: 1.8rem; color: #00d4ff; margin-bottom: 0.5rem; }
+  header .meta { font-size: 0.9rem; color: #888; }
+  header .meta span { margin: 0 1rem; }
+  .mermaid { display: flex; justify-content: center; margin: 2rem 0; }
+  .mermaid svg { max-width: 100%; }
+  .legend { background: #16213e; border: 1px solid #333; border-radius: 8px; padding: 1.5rem; max-width: 600px; margin: 2rem auto 0; }
+  .legend h3 { color: #00d4ff; margin-bottom: 0.8rem; font-size: 1rem; }
+  .legend ul { list-style: none; }
+  .legend li { padding: 0.25rem 0; font-size: 0.85rem; }
+  .legend li code { background: #0f3460; padding: 2px 6px; border-radius: 3px; color: #e94560; font-size: 0.8rem; }
+</style>
+</head>
+<body>
+
+<header>
+  <h1>funeral_homes — Entity Relationship Diagram</h1>
+  <div class="meta">
+    <span>Database: <strong>funeral_homes</strong></span>
+    <span>Host: <strong>db99.rds.blockshopper.com</strong></span>
+    <span>Tables: <strong>2</strong></span>
+    <span>Generated: <strong>2026-03-06</strong></span>
+  </div>
+</header>
+
+<div class="mermaid">
+erDiagram
+    obituaries {
+        INT id PK
+        VARCHAR site_id "IDX"
+        VARCHAR legacy_url UK "dedup key"
+        VARCHAR deceased_name
+        DATE published_date "IDX"
+        DATE death_date
+        VARCHAR funeral_home
+        LONGTEXT obit_text
+        DATETIME scraped_at
+        TINYINT sent_to_cms "IDX"
+    }
+
+    scrape_log {
+        INT id PK
+        VARCHAR site_id
+        DATE run_date "IDX"
+        INT obits_found
+        INT obits_new
+        TEXT errors
+        DATETIME run_at
+    }
+
+    scrape_log ||--o{ obituaries : "logs runs for"
+</div>
+
+<div class="legend">
+  <h3>Legend</h3>
+  <ul>
+    <li><code>PK</code> Primary Key (AUTO_INCREMENT)</li>
+    <li><code>UK</code> Unique Key (deduplication)</li>
+    <li><code>IDX</code> Indexed column</li>
+    <li><code>LONGTEXT</code> Full obituary body text</li>
+  </ul>
+  <h3 style="margin-top: 1rem;">Relationships</h3>
+  <ul>
+    <li><code>scrape_log</code> logs daily run stats per <code>site_id</code></li>
+    <li><code>obituaries</code> stores individual obituaries keyed by <code>legacy_url</code></li>
+    <li>Both tables share <code>site_id</code> referencing markets in <code>config/markets.json</code></li>
+  </ul>
+</div>
+
+<script>
+  mermaid.initialize({
+    startOnLoad: true,
+    theme: 'dark',
+    themeVariables: {
+      primaryColor: '#0f3460',
+      primaryTextColor: '#e0e0e0',
+      primaryBorderColor: '#00d4ff',
+      lineColor: '#e94560',
+      secondaryColor: '#16213e',
+      tertiaryColor: '#1a1a2e'
+    }
+  });
+</script>
+
+</body>
+</html>
