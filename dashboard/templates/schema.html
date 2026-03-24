@@ -1,0 +1,60 @@
+{% extends "base.html" %}
+{% block title %}Schema — CR Obituaries{% endblock %}
+{% block content %}
+<h1>Database Schema</h1>
+<p class="total">Database: funeral_homes on db99.rds.blockshopper.com</p>
+
+{% for table_name, columns in tables.items() %}
+<div class="schema-table">
+    <h2>{{ table_name }} <span class="row-count">({{ "{:,}".format(counts[table_name]) }} rows)</span></h2>
+
+    <table>
+        <thead>
+            <tr>
+                <th>Column</th>
+                <th>Type</th>
+                <th>Null</th>
+                <th>Key</th>
+                <th>Default</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for col in columns %}
+            <tr>
+                <td><strong>{{ col.Field }}</strong></td>
+                <td><code>{{ col.Type }}</code></td>
+                <td>{{ col.Null }}</td>
+                <td>{{ col.Key }}</td>
+                <td>{{ col.Default or "" }}</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+
+    <h3>Indexes</h3>
+    <table>
+        <thead>
+            <tr>
+                <th>Name</th>
+                <th>Column</th>
+                <th>Unique</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for idx in indexes[table_name] %}
+            <tr>
+                <td>{{ idx.name }}</td>
+                <td>{{ idx.column }}</td>
+                <td>{{ "Yes" if idx.unique else "No" }}</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+{% endfor %}
+
+<div class="schema-links">
+    <a href="/erd" target="_blank">View ERD Diagram</a>
+    <a href="/static/erd.html" download="funeral_homes_erd.html">Download ERD</a>
+</div>
+{% endblock %}

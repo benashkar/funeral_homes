@@ -215,4 +215,49 @@ def create_app():
             logger.error("Stats route error: %s", e)
             return f"<h1>Database Error</h1><p>{e}</p>", 503
 
+    @app.route("/schema")
+    def schema():
+        try:
+            conn = _get_conn()
+            cur = conn.cursor(dictionary=True)
+
+            # Get table schemas
+            tables = {}
+            for table in ["obituaries", "scrape_log"]:
+                cur.execute(f"DESCRIBE {table}")
+                tables[table] = cur.fetchall()
+
+            # Get index info
+            indexes = {}
+            for table in ["obituaries", "scrape_log"]:
+                cur.execute(f"SHOW INDEX FROM {table}")
+                raw = cur.fetchall()
+                indexes[table] = [
+                    {"name": r["Key_name"], "column": r["Column_name"], "unique": r["Non_unique"] == 0}
+                    for r in raw
+                ]
+
+            # Get row counts
+            counts = {}
+            for table in ["obituaries", "scrape_log"]:
+                cur.execute(f"SELECT COUNT(*) as cnt FROM {table}")
+                counts[table] = cur.fetchone()["cnt"]
+
+            cur.close()
+            conn.close()
+
+            return render_template(
+                "schema.html",
+                tables=tables,
+                indexes=indexes,
+                counts=counts,
+            )
+        except Exception as e:
+            logger.error("Schema route error: %s", e)
+            return f"<h1>Database Error</h1><p>{e}</p>", 503
+
+    @app.route("/erd")
+    def erd():
+        return app.send_static_file("erd.html")
+
     return app
