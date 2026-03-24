@@ -11,6 +11,8 @@ CREATE TABLE IF NOT EXISTS obituaries (
     deceased_name   VARCHAR(255),
     published_date  DATE,
     death_date      DATE,
+    death_city      VARCHAR(100)  DEFAULT NULL,
+    death_state     VARCHAR(10)   DEFAULT NULL,
     funeral_home    VARCHAR(255),
     photo_url       VARCHAR(500)  DEFAULT NULL,
     obit_text       LONGTEXT,
@@ -18,6 +20,7 @@ CREATE TABLE IF NOT EXISTS obituaries (
     sent_to_cms     TINYINT(1)    DEFAULT 0,
     INDEX idx_site_id (site_id),
     INDEX idx_published_date (published_date),
+    INDEX idx_death_city (death_city),
     INDEX idx_sent_to_cms (sent_to_cms)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 

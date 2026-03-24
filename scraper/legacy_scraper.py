@@ -5,7 +5,7 @@ import json
 from bs4 import BeautifulSoup
 
 from scraper.url_builder import build_listing_url
-from scraper.obit_parser import parse_name, parse_dates, parse_funeral_home, parse_obit_text, parse_photo_url
+from scraper.obit_parser import parse_name, parse_dates, parse_funeral_home, parse_obit_text, parse_photo_url, parse_death_place
 from utils.logger import get_logger
 from utils.rate_limiter import create_session, polite_get
 
@@ -97,12 +97,15 @@ class LegacyScraper:
         """
         soup = BeautifulSoup(html, "lxml")
         dates = parse_dates(soup)
+        place = parse_death_place(soup)
 
         return {
             "legacy_url": url,
             "deceased_name": parse_name(soup),
             "published_date": dates["published"],
             "death_date": dates["death"],
+            "death_city": place["city"],
+            "death_state": place["state"],
             "funeral_home": parse_funeral_home(soup),
             "photo_url": parse_photo_url(soup),
             "obit_text": parse_obit_text(soup),

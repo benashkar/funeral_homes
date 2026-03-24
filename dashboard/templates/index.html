@@ -12,13 +12,18 @@
         <option value="{{ abbr }}" {% if abbr == state %}selected{% endif %}>{{ name }}</option>
         {% endfor %}
     </select>
-    <select name="site_id">
+    <select name="site_id" onchange="this.form.submit()">
         <option value="">All counties</option>
         {% for sid, label in counties %}
         <option value="{{ sid }}" {% if sid == site_id %}selected{% endif %}>{{ label }}</option>
         {% endfor %}
     </select>
-    <input type="text" name="city" placeholder="City..." value="{{ city }}">
+    <select name="city">
+        <option value="">All cities</option>
+        {% for c in cities %}
+        <option value="{{ c }}" {% if c == city %}selected{% endif %}>{{ c }}</option>
+        {% endfor %}
+    </select>
     <button type="submit">Filter</button>
     {% if search or state or site_id or city %}<a href="/">Clear</a>{% endif %}
 </form>
@@ -28,23 +33,23 @@
         <tr>
             <th></th>
             <th>Name</th>
+            <th>City</th>
             <th>Published</th>
             <th>Death Date</th>
             <th>Funeral Home</th>
             <th>Market</th>
-            <th>Link</th>
         </tr>
     </thead>
     <tbody>
         {% for o in obits %}
         <tr>
             <td class="photo-cell">{% if o.photo_url %}<img src="{{ o.photo_url }}" alt="" loading="lazy">{% endif %}</td>
-            <td>{{ o.deceased_name or "" }}</td>
+            <td><a href="/obit/{{ o.id }}">{{ o.deceased_name or "" }}</a></td>
+            <td>{{ o.death_city or "" }}{% if o.death_state %}, {{ o.death_state }}{% endif %}</td>
             <td>{{ o.published_date or "" }}</td>
             <td>{{ o.death_date or "" }}</td>
             <td class="truncate">{{ o.funeral_home or "" }}</td>
             <td>{{ o.site_id }}</td>
-            <td>{% if o.legacy_url %}<a href="{{ o.legacy_url }}" target="_blank">View</a>{% endif %}</td>
         </tr>
         {% endfor %}
     </tbody>
