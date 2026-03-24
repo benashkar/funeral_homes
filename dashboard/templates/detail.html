@@ -1,0 +1,43 @@
+{% extends "base.html" %}
+{% block title %}{{ obit.deceased_name or "Obituary" }}{% endblock %}
+{% block content %}
+<div class="detail-page">
+    <a href="/" class="back-link">&laquo; Back to list</a>
+
+    <div class="detail-header">
+        {% if obit.photo_url %}
+        <img src="{{ obit.photo_url }}" alt="{{ obit.deceased_name }}" class="detail-photo">
+        {% endif %}
+        <div class="detail-info">
+            <h1>{{ obit.deceased_name or "Unknown" }}</h1>
+            <div class="detail-meta">
+                {% if obit.death_city %}
+                <span>{{ obit.death_city }}{% if obit.death_state %}, {{ obit.death_state }}{% endif %}</span>
+                {% endif %}
+                {% if obit.death_date %}
+                <span>Died: {{ obit.death_date }}</span>
+                {% endif %}
+                {% if obit.published_date %}
+                <span>Published: {{ obit.published_date }}</span>
+                {% endif %}
+            </div>
+            {% if obit.funeral_home %}
+            <div class="detail-fh">{{ obit.funeral_home }}</div>
+            {% endif %}
+        </div>
+    </div>
+
+    {% if obit.obit_text %}
+    <div class="detail-text">
+        {{ obit.obit_text | replace('\n', '<br>') | safe }}
+    </div>
+    {% endif %}
+
+    <div class="detail-footer">
+        {% if obit.legacy_url %}
+        <a href="{{ obit.legacy_url }}" target="_blank">View on Legacy.com</a>
+        {% endif %}
+        <span class="detail-id">Market: {{ obit.site_id }} | Scraped: {{ obit.scraped_at }}</span>
+    </div>
+</div>
+{% endblock %}

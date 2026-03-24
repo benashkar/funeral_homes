@@ -11,7 +11,7 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from datetime import date
 from bs4 import BeautifulSoup
 
-from scraper.obit_parser import parse_name, parse_dates, parse_funeral_home, parse_obit_text, parse_photo_url
+from scraper.obit_parser import parse_name, parse_dates, parse_funeral_home, parse_obit_text, parse_photo_url, parse_death_place
 
 
 # --- Fixtures: realistic Legacy.com JSON-LD structured data ---
@@ -38,7 +38,8 @@ FULL_OBIT_HTML = """
         "additionalName": "Michael",
         "deathDate": "2026-2-28",
         "birthDate": "1945-1-5",
-        "image": "https://cache.legacy.net/photos/12345.jpg"
+        "image": "https://cache.legacy.net/photos/12345.jpg",
+        "deathPlace": {"@type": "Place", "address": {"@type": "PostalAddress", "addressLocality": "Springfield", "addressRegion": "OH"}}
     }
     </script>
     <script type="application/ld+json">
@@ -167,3 +168,19 @@ def test_parse_photo_url_missing():
 def test_parse_photo_url_no_person():
     soup = BeautifulSoup(MINIMAL_OBIT_HTML, "lxml")
     assert parse_photo_url(soup) is None
+
+
+# --- parse_death_place tests ---
+
+def test_parse_death_place_happy():
+    soup = BeautifulSoup(FULL_OBIT_HTML, "lxml")
+    place = parse_death_place(soup)
+    assert place["city"] == "Springfield"
+    assert place["state"] == "OH"
+
+
+def test_parse_death_place_missing():
+    soup = BeautifulSoup(EMPTY_HTML, "lxml")
+    place = parse_death_place(soup)
+    assert place["city"] is None
+    assert place["state"] is None

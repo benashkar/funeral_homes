@@ -10,7 +10,6 @@ logger = get_logger(__name__)
 
 PER_PAGE = 50
 
-# Map state abbreviations to full names (for display)
 STATE_MAP = {
     "tx": "Texas", "oh": "Ohio", "ma": "Massachusetts", "ga": "Georgia",
     "mn": "Minnesota", "wi": "Wisconsin", "il": "Illinois",
@@ -30,12 +29,10 @@ def _get_conn():
 
 
 def _state_from_site_id(site_id):
-    """Extract state abbreviation from site_id (e.g. 'mn-hennepin' -> 'mn')."""
     return site_id.split("-")[0] if site_id else ""
 
 
 def _county_from_site_id(site_id):
-    """Extract county name from site_id (e.g. 'mn-hennepin' -> 'Hennepin')."""
     parts = site_id.split("-")[1:]
     return " ".join(p.capitalize() for p in parts) if parts else ""
 
@@ -68,7 +65,6 @@ def create_app():
             conn = _get_conn()
             cur = conn.cursor(dictionary=True)
 
-            # Build query
             where_clauses = []
             params = []
             if search:
@@ -81,19 +77,17 @@ def create_app():
                 where_clauses.append("site_id = %s")
                 params.append(site_id)
             if city:
-                where_clauses.append("(obit_text LIKE %s OR funeral_home LIKE %s)")
-                params.extend([f"%{city}%", f"%{city}%"])
+                where_clauses.append("death_city = %s")
+                params.append(city)
 
             where = ""
             if where_clauses:
                 where = "WHERE " + " AND ".join(where_clauses)
 
-            # Count
             cur.execute(f"SELECT COUNT(*) as cnt FROM obituaries {where}", params)
             total = cur.fetchone()["cnt"]
             total_pages = max(1, (total + PER_PAGE - 1) // PER_PAGE)
 
-            # Fetch page
             offset = (page - 1) * PER_PAGE
             cur.execute(
                 f"SELECT * FROM obituaries {where} ORDER BY published_date DESC, id DESC LIMIT %s OFFSET %s",
@@ -101,15 +95,13 @@ def create_app():
             )
             obits = cur.fetchall()
 
-            # Get distinct states and site_ids for filters
+            # Filters: states, counties, cities
             cur.execute("SELECT DISTINCT site_id FROM obituaries ORDER BY site_id")
             all_site_ids = [r["site_id"] for r in cur.fetchall()]
 
-            # Build state list from site_ids
             states = sorted({_state_from_site_id(s) for s in all_site_ids})
             states_display = [(s, STATE_MAP.get(s, s.upper())) for s in states]
 
-            # If state is selected, filter counties to that state
             if state:
                 counties = sorted(
                     [(s, _county_from_site_id(s)) for s in all_site_ids if s.startswith(f"{state}-")],
@@ -120,6 +112,21 @@ def create_app():
                     [(s, _county_from_site_id(s)) for s in all_site_ids],
                     key=lambda x: x[1],
                 )
+
+            # City dropdown — distinct death_city values, filtered by state if selected
+            city_where = "WHERE death_city IS NOT NULL AND death_city != ''"
+            city_params = []
+            if state:
+                city_where += " AND site_id LIKE %s"
+                city_params.append(f"{state}-%")
+            if site_id:
+                city_where += " AND site_id = %s"
+                city_params.append(site_id)
+            cur.execute(
+                f"SELECT DISTINCT death_city FROM obituaries {city_where} ORDER BY death_city",
+                city_params,
+            )
+            cities = [r["death_city"] for r in cur.fetchall()]
 
             cur.close()
             conn.close()
@@ -132,6 +139,7 @@ def create_app():
                 total=total,
                 states=states_display,
                 counties=counties,
+                cities=cities,
                 search=search,
                 state=state,
                 site_id=site_id,
@@ -139,6 +147,24 @@ def create_app():
             )
         except Exception as e:
             logger.error("Index route error: %s", e)
+            return f"<h1>Database Error</h1><p>{e}</p>", 503
+
+    @app.route("/obit/<int:obit_id>")
+    def obit_detail(obit_id):
+        try:
+            conn = _get_conn()
+            cur = conn.cursor(dictionary=True)
+            cur.execute("SELECT * FROM obituaries WHERE id = %s", (obit_id,))
+            obit = cur.fetchone()
+            cur.close()
+            conn.close()
+
+            if not obit:
+                return "<h1>Not Found</h1>", 404
+
+            return render_template("detail.html", obit=obit)
+        except Exception as e:
+            logger.error("Detail route error: %s", e)
             return f"<h1>Database Error</h1><p>{e}</p>", 503
 
     @app.route("/stats")

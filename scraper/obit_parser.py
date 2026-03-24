@@ -181,3 +181,27 @@ def parse_photo_url(soup):
         if image:
             return image.strip()
     return None
+
+
+def parse_death_place(soup):
+    """Extract death city and state from JSON-LD Person.deathPlace.
+
+    Args:
+        soup: BeautifulSoup object of a single obituary page.
+
+    Returns:
+        dict with keys 'city' and 'state', values are str or None.
+    """
+    result = {"city": None, "state": None}
+    blocks = _extract_jsonld(soup)
+    person = blocks.get("Person")
+    if person:
+        death_place = person.get("deathPlace") or {}
+        address = death_place.get("address") or {}
+        city = address.get("addressLocality") or ""
+        state = address.get("addressRegion") or ""
+        if city:
+            result["city"] = city.strip()
+        if state:
+            result["state"] = state.strip()
+    return result

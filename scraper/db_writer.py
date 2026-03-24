@@ -16,10 +16,12 @@ logger = get_logger(__name__)
 # SQL statements
 INSERT_OBIT_SQL = """
     INSERT IGNORE INTO obituaries
-        (site_id, legacy_url, deceased_name, published_date, death_date, funeral_home, photo_url, obit_text)
+        (site_id, legacy_url, deceased_name, published_date, death_date,
+         death_city, death_state, funeral_home, photo_url, obit_text)
     VALUES
         (%(site_id)s, %(legacy_url)s, %(deceased_name)s, %(published_date)s,
-         %(death_date)s, %(funeral_home)s, %(photo_url)s, %(obit_text)s)
+         %(death_date)s, %(death_city)s, %(death_state)s, %(funeral_home)s,
+         %(photo_url)s, %(obit_text)s)
 """
 
 INSERT_LOG_SQL = """
@@ -131,6 +133,8 @@ def batch_insert_obits(conn, obits, site_id):
             "deceased_name": obit.get("deceased_name"),
             "published_date": obit.get("published_date"),
             "death_date": obit.get("death_date"),
+            "death_city": obit.get("death_city"),
+            "death_state": obit.get("death_state"),
             "funeral_home": obit.get("funeral_home"),
             "photo_url": obit.get("photo_url"),
             "obit_text": obit.get("obit_text"),
