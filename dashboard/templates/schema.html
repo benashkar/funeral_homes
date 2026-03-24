@@ -1,60 +1,183 @@
 {% extends "base.html" %}
-{% block title %}Schema — CR Obituaries{% endblock %}
+{% block title %}Database Schema - ERD{% endblock %}
 {% block content %}
-<h1>Database Schema</h1>
-<p class="total">Database: funeral_homes on db99.rds.blockshopper.com</p>
+<h2>Database Schema</h2>
+<p class="total">funeral_homes on db99 (MySQL) | {{ tables|length }} tables</p>
+
+<div class="card mb-4">
+    <div class="card-header" style="display:flex; justify-content:space-between; align-items:center; background:#34495e; color:white; padding:12px 16px;">
+        <div>
+            <strong>Entity Relationship Diagram</strong>
+            <small style="color:#aaa; margin-left:10px;">Scroll to zoom, drag to pan</small>
+        </div>
+        <div>
+            <button class="btn-download" onclick="downloadSVG()">Download SVG</button>
+            <button class="btn-download" onclick="downloadPNG()">Download PNG</button>
+        </div>
+    </div>
+    <div style="overflow:auto; background:#1a1a2e; padding:20px;">
+        <pre class="mermaid" style="min-height:400px;">
+erDiagram
+    obituaries {
+        INT id PK
+        VARCHAR site_id "IDX"
+        VARCHAR legacy_url UK "dedup key"
+        VARCHAR deceased_name
+        DATE published_date "IDX"
+        DATE death_date
+        VARCHAR death_city "IDX"
+        VARCHAR death_state
+        VARCHAR funeral_home
+        VARCHAR photo_url
+        LONGTEXT obit_text
+        DATETIME scraped_at
+        TINYINT sent_to_cms "IDX"
+        TINYINT is_deleted "IDX"
+    }
+
+    scrape_log {
+        INT id PK
+        VARCHAR site_id
+        DATE run_date "IDX"
+        INT obits_found
+        INT obits_new
+        TEXT errors
+        DATETIME run_at
+    }
+
+    scrape_log ||--o{ obituaries : "logs runs for"
+        </pre>
+    </div>
+</div>
+
+<div class="card mb-4">
+    <div class="card-header" style="background:#34495e; color:white; padding:12px 16px;">
+        <strong>Key Relationships</strong>
+    </div>
+    <div class="card-body-table">
+        <table>
+            <thead><tr><th>From</th><th>To</th><th>Join</th><th>Description</th></tr></thead>
+            <tbody>
+                <tr><td>obituaries</td><td>scrape_log</td><td>site_id</td><td>Both share site_id referencing markets in config/markets.json</td></tr>
+                <tr><td>obituaries</td><td>config/markets.json</td><td>site_id</td><td>Maps to state, county, and Legacy.com URL slug</td></tr>
+                <tr><td>obituaries</td><td>Legacy.com</td><td>legacy_url</td><td>Source URL (unique dedup key, includes ?id= param)</td></tr>
+            </tbody>
+        </table>
+    </div>
+</div>
 
 {% for table_name, columns in tables.items() %}
-<div class="schema-table">
-    <h2>{{ table_name }} <span class="row-count">({{ "{:,}".format(counts[table_name]) }} rows)</span></h2>
+<div class="card mb-4">
+    <div class="card-header" style="background:#34495e; color:white; padding:12px 16px;">
+        <strong>{{ table_name }}</strong>
+        <small style="color:#aaa; margin-left:10px;">{{ "{:,}".format(counts[table_name]) }} rows</small>
+    </div>
+    <div class="card-body-table">
+        <table>
+            <thead>
+                <tr><th>Column</th><th>Type</th><th>Null</th><th>Key</th><th>Default</th></tr>
+            </thead>
+            <tbody>
+                {% for col in columns %}
+                <tr>
+                    <td><strong>{{ col.Field }}</strong></td>
+                    <td><code>{{ col.Type }}</code></td>
+                    <td>{{ col.Null }}</td>
+                    <td>{% if col.Key == 'PRI' %}PK{% elif col.Key == 'UNI' %}UK{% elif col.Key == 'MUL' %}IDX{% endif %}</td>
+                    <td>{{ col.Default if col.Default is not none else "" }}</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
 
-    <table>
-        <thead>
-            <tr>
-                <th>Column</th>
-                <th>Type</th>
-                <th>Null</th>
-                <th>Key</th>
-                <th>Default</th>
-            </tr>
-        </thead>
-        <tbody>
-            {% for col in columns %}
-            <tr>
-                <td><strong>{{ col.Field }}</strong></td>
-                <td><code>{{ col.Type }}</code></td>
-                <td>{{ col.Null }}</td>
-                <td>{{ col.Key }}</td>
-                <td>{{ col.Default or "" }}</td>
-            </tr>
-            {% endfor %}
-        </tbody>
-    </table>
-
-    <h3>Indexes</h3>
-    <table>
-        <thead>
-            <tr>
-                <th>Name</th>
-                <th>Column</th>
-                <th>Unique</th>
-            </tr>
-        </thead>
-        <tbody>
-            {% for idx in indexes[table_name] %}
-            <tr>
-                <td>{{ idx.name }}</td>
-                <td>{{ idx.column }}</td>
-                <td>{{ "Yes" if idx.unique else "No" }}</td>
-            </tr>
-            {% endfor %}
-        </tbody>
-    </table>
+        <h3 style="margin:15px 16px 8px; font-size:0.95rem; color:#555;">Indexes</h3>
+        <table>
+            <thead><tr><th>Name</th><th>Column</th><th>Unique</th></tr></thead>
+            <tbody>
+                {% for idx in indexes[table_name] %}
+                <tr>
+                    <td>{{ idx.name }}</td>
+                    <td>{{ idx.column }}</td>
+                    <td>{{ "Yes" if idx.unique else "No" }}</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
 </div>
 {% endfor %}
 
-<div class="schema-links">
-    <a href="/erd" target="_blank">View ERD Diagram</a>
-    <a href="/static/erd.html" download="funeral_homes_erd.html">Download ERD</a>
+<div class="card mb-4">
+    <div class="card-header" style="background:#34495e; color:white; padding:12px 16px;">
+        <strong>Data Quality Rules</strong>
+    </div>
+    <div class="card-body-table">
+        <table>
+            <thead><tr><th>Rule</th><th>Action</th><th>When</th></tr></thead>
+            <tbody>
+                <tr><td>Null or empty deceased_name</td><td>is_deleted = 1</td><td>Post-scrape cleanup</td></tr>
+                <tr><td>Name with no letters (only punctuation/numbers)</td><td>is_deleted = 1</td><td>Post-scrape cleanup</td></tr>
+                <tr><td>Cross-market duplicate (same name + death_date + funeral_home)</td><td>is_deleted = 1 (keeps lowest id)</td><td>Post-scrape cleanup</td></tr>
+                <tr><td>Headline fallback "Name YYYY - Funeral Home"</td><td>Split: name cleaned, funeral_home extracted</td><td>During parse</td></tr>
+                <tr><td>legacy_url already in DB</td><td>INSERT IGNORE (skipped)</td><td>During insert</td></tr>
+            </tbody>
+        </table>
+    </div>
 </div>
+
+<script type="module">
+    import mermaid from 'https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.esm.min.mjs';
+    mermaid.initialize({
+        startOnLoad: true,
+        theme: 'dark',
+        er: { useMaxWidth: false, layoutDirection: 'TB' }
+    });
+
+    window.downloadSVG = function() {
+        const svg = document.querySelector('.mermaid svg');
+        if (!svg) { alert('ERD not rendered yet'); return; }
+        const clone = svg.cloneNode(true);
+        clone.setAttribute('xmlns', 'http://www.w3.org/2000/svg');
+        const bg = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
+        bg.setAttribute('width', '100%');
+        bg.setAttribute('height', '100%');
+        bg.setAttribute('fill', '#1a1a2e');
+        clone.insertBefore(bg, clone.firstChild);
+        const blob = new Blob([new XMLSerializer().serializeToString(clone)], {type: 'image/svg+xml'});
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = 'funeral_homes_erd.svg';
+        a.click();
+        URL.revokeObjectURL(url);
+    };
+
+    window.downloadPNG = function() {
+        const svg = document.querySelector('.mermaid svg');
+        if (!svg) { alert('ERD not rendered yet'); return; }
+        const clone = svg.cloneNode(true);
+        clone.setAttribute('xmlns', 'http://www.w3.org/2000/svg');
+        const bg = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
+        bg.setAttribute('width', '100%');
+        bg.setAttribute('height', '100%');
+        bg.setAttribute('fill', '#1a1a2e');
+        clone.insertBefore(bg, clone.firstChild);
+        const svgData = new XMLSerializer().serializeToString(clone);
+        const canvas = document.createElement('canvas');
+        const bbox = svg.getBoundingClientRect();
+        canvas.width = bbox.width * 2;
+        canvas.height = bbox.height * 2;
+        const ctx = canvas.getContext('2d');
+        ctx.scale(2, 2);
+        const img = new Image();
+        img.onload = function() {
+            ctx.drawImage(img, 0, 0);
+            const a = document.createElement('a');
+            a.href = canvas.toDataURL('image/png');
+            a.download = 'funeral_homes_erd.png';
+            a.click();
+        };
+        img.src = 'data:image/svg+xml;base64,' + btoa(unescape(encodeURIComponent(svgData)));
+    };
+</script>
 {% endblock %}
