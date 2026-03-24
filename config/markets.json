@@ -2154,186 +2154,6 @@
     "type": "county"
   },
   {
-    "site_id": "ak-aleutians-east",
-    "state": "alaska",
-    "legacy_slug": "aleutians-east-county",
-    "type": "county"
-  },
-  {
-    "site_id": "ak-aleutians-west",
-    "state": "alaska",
-    "legacy_slug": "aleutians-west-county",
-    "type": "county"
-  },
-  {
-    "site_id": "ak-anchorage",
-    "state": "alaska",
-    "legacy_slug": "anchorage-county",
-    "type": "county"
-  },
-  {
-    "site_id": "ak-bethel",
-    "state": "alaska",
-    "legacy_slug": "bethel-county",
-    "type": "county"
-  },
-  {
-    "site_id": "ak-bristol-bay",
-    "state": "alaska",
-    "legacy_slug": "bristol-bay-county",
-    "type": "county"
-  },
-  {
-    "site_id": "ak-chugach",
-    "state": "alaska",
-    "legacy_slug": "chugach-county",
-    "type": "county"
-  },
-  {
-    "site_id": "ak-copper-river",
-    "state": "alaska",
-    "legacy_slug": "copper-river-county",
-    "type": "county"
-  },
-  {
-    "site_id": "ak-denali",
-    "state": "alaska",
-    "legacy_slug": "denali-county",
-    "type": "county"
-  },
-  {
-    "site_id": "ak-dillingham",
-    "state": "alaska",
-    "legacy_slug": "dillingham-county",
-    "type": "county"
-  },
-  {
-    "site_id": "ak-fairbanks-north-star",
-    "state": "alaska",
-    "legacy_slug": "fairbanks-north-star-county",
-    "type": "county"
-  },
-  {
-    "site_id": "ak-haines",
-    "state": "alaska",
-    "legacy_slug": "haines-county",
-    "type": "county"
-  },
-  {
-    "site_id": "ak-hoonah-angoon",
-    "state": "alaska",
-    "legacy_slug": "hoonah-angoon-county",
-    "type": "county"
-  },
-  {
-    "site_id": "ak-juneau-city-and",
-    "state": "alaska",
-    "legacy_slug": "juneau-city-and-county",
-    "type": "county"
-  },
-  {
-    "site_id": "ak-kenai-peninsula",
-    "state": "alaska",
-    "legacy_slug": "kenai-peninsula-county",
-    "type": "county"
-  },
-  {
-    "site_id": "ak-ketchikan-gateway",
-    "state": "alaska",
-    "legacy_slug": "ketchikan-gateway-county",
-    "type": "county"
-  },
-  {
-    "site_id": "ak-kodiak-island",
-    "state": "alaska",
-    "legacy_slug": "kodiak-island-county",
-    "type": "county"
-  },
-  {
-    "site_id": "ak-kusilvak",
-    "state": "alaska",
-    "legacy_slug": "kusilvak-county",
-    "type": "county"
-  },
-  {
-    "site_id": "ak-lake-and-peninsula",
-    "state": "alaska",
-    "legacy_slug": "lake-and-peninsula-county",
-    "type": "county"
-  },
-  {
-    "site_id": "ak-matanuska-susitna",
-    "state": "alaska",
-    "legacy_slug": "matanuska-susitna-county",
-    "type": "county"
-  },
-  {
-    "site_id": "ak-nome",
-    "state": "alaska",
-    "legacy_slug": "nome-county",
-    "type": "county"
-  },
-  {
-    "site_id": "ak-north-slope",
-    "state": "alaska",
-    "legacy_slug": "north-slope-county",
-    "type": "county"
-  },
-  {
-    "site_id": "ak-northwest-arctic",
-    "state": "alaska",
-    "legacy_slug": "northwest-arctic-county",
-    "type": "county"
-  },
-  {
-    "site_id": "ak-petersburg",
-    "state": "alaska",
-    "legacy_slug": "petersburg-county",
-    "type": "county"
-  },
-  {
-    "site_id": "ak-prince-of-wales-hyder",
-    "state": "alaska",
-    "legacy_slug": "prince-of-wales-hyder-county",
-    "type": "county"
-  },
-  {
-    "site_id": "ak-sitka-city-and",
-    "state": "alaska",
-    "legacy_slug": "sitka-city-and-county",
-    "type": "county"
-  },
-  {
-    "site_id": "ak-skagway",
-    "state": "alaska",
-    "legacy_slug": "skagway-county",
-    "type": "county"
-  },
-  {
-    "site_id": "ak-southeast-fairbanks",
-    "state": "alaska",
-    "legacy_slug": "southeast-fairbanks-county",
-    "type": "county"
-  },
-  {
-    "site_id": "ak-wrangell-city-and",
-    "state": "alaska",
-    "legacy_slug": "wrangell-city-and-county",
-    "type": "county"
-  },
-  {
-    "site_id": "ak-yakutat-city-and",
-    "state": "alaska",
-    "legacy_slug": "yakutat-city-and-county",
-    "type": "county"
-  },
-  {
-    "site_id": "ak-yukon-koyukuk",
-    "state": "alaska",
-    "legacy_slug": "yukon-koyukuk-county",
-    "type": "county"
-  },
-  {
     "site_id": "az-apache",
     "state": "arizona",
     "legacy_slug": "apache-county",
@@ -6872,385 +6692,385 @@
   {
     "site_id": "la-acadia",
     "state": "louisiana",
-    "legacy_slug": "acadia-county",
+    "legacy_slug": "acadia-parish",
     "type": "county"
   },
   {
     "site_id": "la-allen",
     "state": "louisiana",
-    "legacy_slug": "allen-county",
+    "legacy_slug": "allen-parish",
     "type": "county"
   },
   {
     "site_id": "la-ascension",
     "state": "louisiana",
-    "legacy_slug": "ascension-county",
+    "legacy_slug": "ascension-parish",
     "type": "county"
   },
   {
     "site_id": "la-assumption",
     "state": "louisiana",
-    "legacy_slug": "assumption-county",
+    "legacy_slug": "assumption-parish",
     "type": "county"
   },
   {
     "site_id": "la-avoyelles",
     "state": "louisiana",
-    "legacy_slug": "avoyelles-county",
+    "legacy_slug": "avoyelles-parish",
     "type": "county"
   },
   {
     "site_id": "la-beauregard",
     "state": "louisiana",
-    "legacy_slug": "beauregard-county",
+    "legacy_slug": "beauregard-parish",
     "type": "county"
   },
   {
     "site_id": "la-bienville",
     "state": "louisiana",
-    "legacy_slug": "bienville-county",
+    "legacy_slug": "bienville-parish",
     "type": "county"
   },
   {
     "site_id": "la-bossier",
     "state": "louisiana",
-    "legacy_slug": "bossier-county",
+    "legacy_slug": "bossier-parish",
     "type": "county"
   },
   {
     "site_id": "la-caddo",
     "state": "louisiana",
-    "legacy_slug": "caddo-county",
+    "legacy_slug": "caddo-parish",
     "type": "county"
   },
   {
     "site_id": "la-calcasieu",
     "state": "louisiana",
-    "legacy_slug": "calcasieu-county",
+    "legacy_slug": "calcasieu-parish",
     "type": "county"
   },
   {
     "site_id": "la-caldwell",
     "state": "louisiana",
-    "legacy_slug": "caldwell-county",
+    "legacy_slug": "caldwell-parish",
     "type": "county"
   },
   {
     "site_id": "la-cameron",
     "state": "louisiana",
-    "legacy_slug": "cameron-county",
+    "legacy_slug": "cameron-parish",
     "type": "county"
   },
   {
     "site_id": "la-catahoula",
     "state": "louisiana",
-    "legacy_slug": "catahoula-county",
+    "legacy_slug": "catahoula-parish",
     "type": "county"
   },
   {
     "site_id": "la-claiborne",
     "state": "louisiana",
-    "legacy_slug": "claiborne-county",
+    "legacy_slug": "claiborne-parish",
     "type": "county"
   },
   {
     "site_id": "la-concordia",
     "state": "louisiana",
-    "legacy_slug": "concordia-county",
+    "legacy_slug": "concordia-parish",
     "type": "county"
   },
   {
     "site_id": "la-de-soto",
     "state": "louisiana",
-    "legacy_slug": "de-soto-county",
+    "legacy_slug": "de-soto-parish",
     "type": "county"
   },
   {
     "site_id": "la-east-baton-rouge",
     "state": "louisiana",
-    "legacy_slug": "east-baton-rouge-county",
+    "legacy_slug": "east-baton-rouge-parish",
     "type": "county"
   },
   {
     "site_id": "la-east-carroll",
     "state": "louisiana",
-    "legacy_slug": "east-carroll-county",
+    "legacy_slug": "east-carroll-parish",
     "type": "county"
   },
   {
     "site_id": "la-east-feliciana",
     "state": "louisiana",
-    "legacy_slug": "east-feliciana-county",
+    "legacy_slug": "east-feliciana-parish",
     "type": "county"
   },
   {
     "site_id": "la-evangeline",
     "state": "louisiana",
-    "legacy_slug": "evangeline-county",
+    "legacy_slug": "evangeline-parish",
     "type": "county"
   },
   {
     "site_id": "la-franklin",
     "state": "louisiana",
-    "legacy_slug": "franklin-county",
+    "legacy_slug": "franklin-parish",
     "type": "county"
   },
   {
     "site_id": "la-grant",
     "state": "louisiana",
-    "legacy_slug": "grant-county",
+    "legacy_slug": "grant-parish",
     "type": "county"
   },
   {
     "site_id": "la-iberia",
     "state": "louisiana",
-    "legacy_slug": "iberia-county",
+    "legacy_slug": "iberia-parish",
     "type": "county"
   },
   {
     "site_id": "la-iberville",
     "state": "louisiana",
-    "legacy_slug": "iberville-county",
+    "legacy_slug": "iberville-parish",
     "type": "county"
   },
   {
     "site_id": "la-jackson",
     "state": "louisiana",
-    "legacy_slug": "jackson-county",
+    "legacy_slug": "jackson-parish",
     "type": "county"
   },
   {
     "site_id": "la-jefferson",
     "state": "louisiana",
-    "legacy_slug": "jefferson-county",
+    "legacy_slug": "jefferson-parish",
     "type": "county"
   },
   {
     "site_id": "la-jefferson-davis",
     "state": "louisiana",
-    "legacy_slug": "jefferson-davis-county",
+    "legacy_slug": "jefferson-davis-parish",
     "type": "county"
   },
   {
     "site_id": "la-lafayette",
     "state": "louisiana",
-    "legacy_slug": "lafayette-county",
+    "legacy_slug": "lafayette-parish",
     "type": "county"
   },
   {
     "site_id": "la-lafourche",
     "state": "louisiana",
-    "legacy_slug": "lafourche-county",
+    "legacy_slug": "lafourche-parish",
     "type": "county"
   },
   {
     "site_id": "la-lasalle",
     "state": "louisiana",
-    "legacy_slug": "lasalle-county",
+    "legacy_slug": "lasalle-parish",
     "type": "county"
   },
   {
     "site_id": "la-lincoln",
     "state": "louisiana",
-    "legacy_slug": "lincoln-county",
+    "legacy_slug": "lincoln-parish",
     "type": "county"
   },
   {
     "site_id": "la-livingston",
     "state": "louisiana",
-    "legacy_slug": "livingston-county",
+    "legacy_slug": "livingston-parish",
     "type": "county"
   },
   {
     "site_id": "la-madison",
     "state": "louisiana",
-    "legacy_slug": "madison-county",
+    "legacy_slug": "madison-parish",
     "type": "county"
   },
   {
     "site_id": "la-morehouse",
     "state": "louisiana",
-    "legacy_slug": "morehouse-county",
+    "legacy_slug": "morehouse-parish",
     "type": "county"
   },
   {
     "site_id": "la-natchitoches",
     "state": "louisiana",
-    "legacy_slug": "natchitoches-county",
+    "legacy_slug": "natchitoches-parish",
     "type": "county"
   },
   {
     "site_id": "la-orleans",
     "state": "louisiana",
-    "legacy_slug": "orleans-county",
+    "legacy_slug": "orleans-parish",
     "type": "county"
   },
   {
     "site_id": "la-ouachita",
     "state": "louisiana",
-    "legacy_slug": "ouachita-county",
+    "legacy_slug": "ouachita-parish",
     "type": "county"
   },
   {
     "site_id": "la-plaquemines",
     "state": "louisiana",
-    "legacy_slug": "plaquemines-county",
+    "legacy_slug": "plaquemines-parish",
     "type": "county"
   },
   {
     "site_id": "la-pointe-coupee",
     "state": "louisiana",
-    "legacy_slug": "pointe-coupee-county",
+    "legacy_slug": "pointe-coupee-parish",
     "type": "county"
   },
   {
     "site_id": "la-rapides",
     "state": "louisiana",
-    "legacy_slug": "rapides-county",
+    "legacy_slug": "rapides-parish",
     "type": "county"
   },
   {
     "site_id": "la-red-river",
     "state": "louisiana",
-    "legacy_slug": "red-river-county",
+    "legacy_slug": "red-river-parish",
     "type": "county"
   },
   {
     "site_id": "la-richland",
     "state": "louisiana",
-    "legacy_slug": "richland-county",
+    "legacy_slug": "richland-parish",
     "type": "county"
   },
   {
     "site_id": "la-sabine",
     "state": "louisiana",
-    "legacy_slug": "sabine-county",
+    "legacy_slug": "sabine-parish",
     "type": "county"
   },
   {
     "site_id": "la-st-bernard",
     "state": "louisiana",
-    "legacy_slug": "st-bernard-county",
+    "legacy_slug": "st-bernard-parish",
     "type": "county"
   },
   {
     "site_id": "la-st-charles",
     "state": "louisiana",
-    "legacy_slug": "st-charles-county",
+    "legacy_slug": "st-charles-parish",
     "type": "county"
   },
   {
     "site_id": "la-st-helena",
     "state": "louisiana",
-    "legacy_slug": "st-helena-county",
+    "legacy_slug": "st-helena-parish",
     "type": "county"
   },
   {
     "site_id": "la-st-james",
     "state": "louisiana",
-    "legacy_slug": "st-james-county",
+    "legacy_slug": "st-james-parish",
     "type": "county"
   },
   {
     "site_id": "la-st-john-the-baptist",
     "state": "louisiana",
-    "legacy_slug": "st-john-the-baptist-county",
+    "legacy_slug": "st-john-the-baptist-parish",
     "type": "county"
   },
   {
     "site_id": "la-st-landry",
     "state": "louisiana",
-    "legacy_slug": "st-landry-county",
+    "legacy_slug": "st-landry-parish",
     "type": "county"
   },
   {
     "site_id": "la-st-martin",
     "state": "louisiana",
-    "legacy_slug": "st-martin-county",
+    "legacy_slug": "st-martin-parish",
     "type": "county"
   },
   {
     "site_id": "la-st-mary",
     "state": "louisiana",
-    "legacy_slug": "st-mary-county",
+    "legacy_slug": "st-mary-parish",
     "type": "county"
   },
   {
     "site_id": "la-st-tammany",
     "state": "louisiana",
-    "legacy_slug": "st-tammany-county",
+    "legacy_slug": "st-tammany-parish",
     "type": "county"
   },
   {
     "site_id": "la-tangipahoa",
     "state": "louisiana",
-    "legacy_slug": "tangipahoa-county",
+    "legacy_slug": "tangipahoa-parish",
     "type": "county"
   },
   {
     "site_id": "la-tensas",
     "state": "louisiana",
-    "legacy_slug": "tensas-county",
+    "legacy_slug": "tensas-parish",
     "type": "county"
   },
   {
     "site_id": "la-terrebonne",
     "state": "louisiana",
-    "legacy_slug": "terrebonne-county",
+    "legacy_slug": "terrebonne-parish",
     "type": "county"
   },
   {
     "site_id": "la-union",
     "state": "louisiana",
-    "legacy_slug": "union-county",
+    "legacy_slug": "union-parish",
     "type": "county"
   },
   {
     "site_id": "la-vermilion",
     "state": "louisiana",
-    "legacy_slug": "vermilion-county",
+    "legacy_slug": "vermilion-parish",
     "type": "county"
   },
   {
     "site_id": "la-vernon",
     "state": "louisiana",
-    "legacy_slug": "vernon-county",
+    "legacy_slug": "vernon-parish",
     "type": "county"
   },
   {
     "site_id": "la-washington",
     "state": "louisiana",
-    "legacy_slug": "washington-county",
+    "legacy_slug": "washington-parish",
     "type": "county"
   },
   {
     "site_id": "la-webster",
     "state": "louisiana",
-    "legacy_slug": "webster-county",
+    "legacy_slug": "webster-parish",
     "type": "county"
   },
   {
     "site_id": "la-west-baton-rouge",
     "state": "louisiana",
-    "legacy_slug": "west-baton-rouge-county",
+    "legacy_slug": "west-baton-rouge-parish",
     "type": "county"
   },
   {
     "site_id": "la-west-carroll",
     "state": "louisiana",
-    "legacy_slug": "west-carroll-county",
+    "legacy_slug": "west-carroll-parish",
     "type": "county"
   },
   {
     "site_id": "la-west-feliciana",
     "state": "louisiana",
-    "legacy_slug": "west-feliciana-county",
+    "legacy_slug": "west-feliciana-parish",
     "type": "county"
   },
   {
     "site_id": "la-winn",
     "state": "louisiana",
-    "legacy_slug": "winn-county",
+    "legacy_slug": "winn-parish",
     "type": "county"
   },
   {
