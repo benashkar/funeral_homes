@@ -18,10 +18,12 @@ CREATE TABLE IF NOT EXISTS obituaries (
     obit_text       LONGTEXT,
     scraped_at      DATETIME      DEFAULT CURRENT_TIMESTAMP,
     sent_to_cms     TINYINT(1)    DEFAULT 0,
+    is_deleted      TINYINT(1)    DEFAULT 0,
     INDEX idx_site_id (site_id),
     INDEX idx_published_date (published_date),
     INDEX idx_death_city (death_city),
-    INDEX idx_sent_to_cms (sent_to_cms)
+    INDEX idx_sent_to_cms (sent_to_cms),
+    INDEX idx_is_deleted (is_deleted)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
 CREATE TABLE IF NOT EXISTS scrape_log (

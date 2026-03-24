@@ -11,11 +11,18 @@ Missing fields return None, never raise.
 """
 
 import json
+import re
 from datetime import datetime
 
 from utils.logger import get_logger
 
 logger = get_logger(__name__)
+
+# Pattern for headline fallback: "Name Obituary YYYY - Funeral Home"
+# or "Name YYYY - Funeral Home" (no "Obituary" keyword)
+_HEADLINE_SUFFIX_RE = re.compile(
+    r'\s*(?:Obituary\s*)?(\d{4})?\s*-\s*.+$'
+)
 
 
 def _extract_jsonld(soup):
@@ -53,12 +60,18 @@ def parse_name(soup):
         if name:
             return name.strip()
 
-    # Fallback: NewsArticle headline
+    # Fallback: NewsArticle headline — may contain year + funeral home
+    # e.g. "Leon G Kober Obituary 2026 - Phillip Funeral Home"
     article = blocks.get("NewsArticle")
     if article:
         headline = article.get("headline") or ""
         if headline:
-            return headline.replace(" Obituary", "").strip()
+            # Strip " Obituary YYYY - Funeral Home" or " YYYY - Funeral Home"
+            cleaned = _HEADLINE_SUFFIX_RE.sub("", headline).strip()
+            # Also strip trailing " Obituary" if it wasn't caught above
+            cleaned = re.sub(r'\s+Obituary$', '', cleaned).strip()
+            if cleaned:
+                return cleaned
 
     logger.warning("Could not find name in JSON-LD")
     return None
@@ -138,6 +151,15 @@ def parse_funeral_home(soup):
                 name = item_data.get("name") or ""
                 if name:
                     return name.strip()
+
+    # Fallback: extract from headline "Name YYYY - Funeral Home"
+    blocks = _extract_jsonld(soup)
+    article = blocks.get("NewsArticle")
+    if article:
+        headline = article.get("headline") or ""
+        match = re.search(r'\d{4}\s*-\s*(.+)$', headline)
+        if match:
+            return match.group(1).strip()
 
     return None
 

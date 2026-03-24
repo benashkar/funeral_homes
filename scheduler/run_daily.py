@@ -21,7 +21,7 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 load_dotenv()
 
 from scraper.legacy_scraper import LegacyScraper
-from scraper.db_writer import get_connection, batch_insert_obits, log_run, get_known_urls_for_site
+from scraper.db_writer import get_connection, batch_insert_obits, log_run, get_known_urls_for_site, flag_bad_and_dupes
 from utils.logger import get_logger
 from utils.rate_limiter import create_session
 
@@ -114,9 +114,14 @@ def run():
             if error:
                 errors += 1
 
+    # Post-scrape cleanup: flag bad names and cross-market duplicates
+    conn = get_connection()
+    bad, duped = flag_bad_and_dupes(conn)
+    conn.close()
+
     logger.info(
-        "Run complete — markets=%d, found=%d, new=%d, errors=%d",
-        len(markets), total_found, total_new, errors,
+        "Run complete — markets=%d, found=%d, new=%d, errors=%d, flagged_bad=%d, flagged_dupes=%d",
+        len(markets), total_found, total_new, errors, bad, duped,
     )
 
 

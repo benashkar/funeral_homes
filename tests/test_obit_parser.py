@@ -97,6 +97,28 @@ def test_parse_name_fallback_headline():
     assert parse_name(soup) == "Community Member"
 
 
+def test_parse_name_strips_year_and_funeral_home():
+    """Headline like 'Leon G Kober Obituary 2026 - Phillip Funeral Home' should clean to just name."""
+    html = """<html><head><script type="application/ld+json">
+    {"@context":"http://schema.org","@type":"NewsArticle",
+     "headline":"Leon G Kober Obituary 2026 - Phillip Funeral Home",
+     "articleBody":"Pending.","datePublished":"2026-03-24T00:00:00.000Z"}
+    </script></head><body></body></html>"""
+    soup = BeautifulSoup(html, "lxml")
+    assert parse_name(soup) == "Leon G Kober"
+
+
+def test_parse_funeral_home_from_headline():
+    """When no BreadcrumbList /fh-, extract funeral home from headline."""
+    html = """<html><head><script type="application/ld+json">
+    {"@context":"http://schema.org","@type":"NewsArticle",
+     "headline":"Leon G Kober Obituary 2026 - Phillip Funeral Home",
+     "articleBody":"Pending.","datePublished":"2026-03-24T00:00:00.000Z"}
+    </script></head><body></body></html>"""
+    soup = BeautifulSoup(html, "lxml")
+    assert parse_funeral_home(soup) == "Phillip Funeral Home"
+
+
 # --- parse_dates tests ---
 
 def test_parse_dates_full():

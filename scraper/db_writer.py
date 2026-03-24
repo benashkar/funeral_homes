@@ -164,6 +164,56 @@ def upsert_obit(conn, obit_dict, site_id):
     return batch_insert_obits(conn, [obit_dict], site_id) > 0
 
 
+def flag_bad_and_dupes(conn):
+    """Post-insert cleanup: flag invalid records and cross-market duplicates.
+
+    Bad records: null/empty name, or name with no letters.
+    Duplicates: same deceased_name + death_date + funeral_home across markets.
+    Keeps the lowest id (first scraped) and flags the rest.
+    """
+    cursor = conn.cursor()
+
+    # Flag bad names
+    cursor.execute("""
+        UPDATE obituaries SET is_deleted = 1
+        WHERE is_deleted = 0
+          AND (deceased_name IS NULL
+               OR TRIM(deceased_name) = ''
+               OR deceased_name REGEXP '^[^a-zA-Z]*$')
+    """)
+    bad = cursor.rowcount
+
+    # Flag cross-market duplicates (same name + date + funeral home)
+    # Keep the lowest id, flag the rest
+    cursor.execute("""
+        UPDATE obituaries o
+        INNER JOIN (
+            SELECT deceased_name, death_date, funeral_home, MIN(id) as keep_id
+            FROM obituaries
+            WHERE is_deleted = 0
+              AND deceased_name IS NOT NULL
+              AND death_date IS NOT NULL
+              AND funeral_home IS NOT NULL
+            GROUP BY deceased_name, death_date, funeral_home
+            HAVING COUNT(*) > 1
+        ) dupes ON o.deceased_name = dupes.deceased_name
+               AND o.death_date = dupes.death_date
+               AND o.funeral_home = dupes.funeral_home
+               AND o.id != dupes.keep_id
+        SET o.is_deleted = 1
+        WHERE o.is_deleted = 0
+    """)
+    duped = cursor.rowcount
+
+    conn.commit()
+    cursor.close()
+
+    if bad > 0 or duped > 0:
+        logger.info("[OK] Flagged %d bad names, %d duplicates as is_deleted", bad, duped)
+
+    return bad, duped
+
+
 def log_run(conn, site_id, found, new, errors=None):
     """Write a scrape run summary to the scrape_log table.
 

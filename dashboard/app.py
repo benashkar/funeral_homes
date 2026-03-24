@@ -76,7 +76,7 @@ def create_app():
             conn = _get_conn()
             cur = conn.cursor(dictionary=True)
 
-            where_clauses = []
+            where_clauses = ["is_deleted = 0"]
             params = []
             if search:
                 where_clauses.append("(deceased_name LIKE %s OR funeral_home LIKE %s)")
@@ -107,7 +107,7 @@ def create_app():
             obits = cur.fetchall()
 
             # Filters: states, counties, cities
-            cur.execute("SELECT DISTINCT site_id FROM obituaries ORDER BY site_id")
+            cur.execute("SELECT DISTINCT site_id FROM obituaries WHERE is_deleted = 0 ORDER BY site_id")
             all_site_ids = [r["site_id"] for r in cur.fetchall()]
 
             states = sorted({_state_from_site_id(s) for s in all_site_ids})
@@ -125,7 +125,7 @@ def create_app():
                 )
 
             # City dropdown — distinct death_city values, filtered by state if selected
-            city_where = "WHERE death_city IS NOT NULL AND death_city != ''"
+            city_where = "WHERE is_deleted = 0 AND death_city IS NOT NULL AND death_city != ''"
             city_params = []
             if state:
                 city_where += " AND site_id LIKE %s"
@@ -189,6 +189,7 @@ def create_app():
                        MAX(published_date) as latest_obit,
                        MIN(published_date) as earliest_obit
                 FROM obituaries
+                WHERE is_deleted = 0
                 GROUP BY site_id
                 ORDER BY total_obits DESC
             """)
