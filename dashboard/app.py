@@ -10,6 +10,12 @@ logger = get_logger(__name__)
 
 PER_PAGE = 50
 
+# Map state abbreviations to full names (for display)
+STATE_MAP = {
+    "tx": "Texas", "oh": "Ohio", "ma": "Massachusetts", "ga": "Georgia",
+    "mn": "Minnesota", "wi": "Wisconsin", "il": "Illinois",
+}
+
 
 def _get_conn():
     creds = get_db_credentials()
@@ -21,6 +27,17 @@ def _get_conn():
         database=creds["DB_NAME"],
         connect_timeout=10,
     )
+
+
+def _state_from_site_id(site_id):
+    """Extract state abbreviation from site_id (e.g. 'mn-hennepin' -> 'mn')."""
+    return site_id.split("-")[0] if site_id else ""
+
+
+def _county_from_site_id(site_id):
+    """Extract county name from site_id (e.g. 'mn-hennepin' -> 'Hennepin')."""
+    parts = site_id.split("-")[1:]
+    return " ".join(p.capitalize() for p in parts) if parts else ""
 
 
 def create_app():
@@ -44,7 +61,9 @@ def create_app():
         try:
             page = request.args.get("page", 1, type=int)
             search = request.args.get("search", "").strip()
+            state = request.args.get("state", "").strip()
             site_id = request.args.get("site_id", "").strip()
+            city = request.args.get("city", "").strip()
 
             conn = _get_conn()
             cur = conn.cursor(dictionary=True)
@@ -55,9 +74,15 @@ def create_app():
             if search:
                 where_clauses.append("(deceased_name LIKE %s OR funeral_home LIKE %s)")
                 params.extend([f"%{search}%", f"%{search}%"])
+            if state:
+                where_clauses.append("site_id LIKE %s")
+                params.append(f"{state}-%")
             if site_id:
                 where_clauses.append("site_id = %s")
                 params.append(site_id)
+            if city:
+                where_clauses.append("(obit_text LIKE %s OR funeral_home LIKE %s)")
+                params.extend([f"%{city}%", f"%{city}%"])
 
             where = ""
             if where_clauses:
@@ -76,9 +101,25 @@ def create_app():
             )
             obits = cur.fetchall()
 
-            # Get distinct site_ids for filter
+            # Get distinct states and site_ids for filters
             cur.execute("SELECT DISTINCT site_id FROM obituaries ORDER BY site_id")
-            sites = [r["site_id"] for r in cur.fetchall()]
+            all_site_ids = [r["site_id"] for r in cur.fetchall()]
+
+            # Build state list from site_ids
+            states = sorted({_state_from_site_id(s) for s in all_site_ids})
+            states_display = [(s, STATE_MAP.get(s, s.upper())) for s in states]
+
+            # If state is selected, filter counties to that state
+            if state:
+                counties = sorted(
+                    [(s, _county_from_site_id(s)) for s in all_site_ids if s.startswith(f"{state}-")],
+                    key=lambda x: x[1],
+                )
+            else:
+                counties = sorted(
+                    [(s, _county_from_site_id(s)) for s in all_site_ids],
+                    key=lambda x: x[1],
+                )
 
             cur.close()
             conn.close()
@@ -89,9 +130,12 @@ def create_app():
                 page=page,
                 total_pages=total_pages,
                 total=total,
-                sites=sites,
+                states=states_display,
+                counties=counties,
                 search=search,
+                state=state,
                 site_id=site_id,
+                city=city,
             )
         except Exception as e:
             logger.error("Index route error: %s", e)

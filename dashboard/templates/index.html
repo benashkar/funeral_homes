@@ -6,19 +6,27 @@
 
 <form class="filters" method="get">
     <input type="text" name="search" placeholder="Search name or funeral home..." value="{{ search }}">
-    <select name="site_id">
-        <option value="">All markets</option>
-        {% for s in sites %}
-        <option value="{{ s }}" {% if s == site_id %}selected{% endif %}>{{ s }}</option>
+    <select name="state" onchange="this.form.submit()">
+        <option value="">All states</option>
+        {% for abbr, name in states %}
+        <option value="{{ abbr }}" {% if abbr == state %}selected{% endif %}>{{ name }}</option>
         {% endfor %}
     </select>
+    <select name="site_id">
+        <option value="">All counties</option>
+        {% for sid, label in counties %}
+        <option value="{{ sid }}" {% if sid == site_id %}selected{% endif %}>{{ label }}</option>
+        {% endfor %}
+    </select>
+    <input type="text" name="city" placeholder="City..." value="{{ city }}">
     <button type="submit">Filter</button>
-    {% if search or site_id %}<a href="/">Clear</a>{% endif %}
+    {% if search or state or site_id or city %}<a href="/">Clear</a>{% endif %}
 </form>
 
 <table>
     <thead>
         <tr>
+            <th></th>
             <th>Name</th>
             <th>Published</th>
             <th>Death Date</th>
@@ -30,6 +38,7 @@
     <tbody>
         {% for o in obits %}
         <tr>
+            <td class="photo-cell">{% if o.photo_url %}<img src="{{ o.photo_url }}" alt="" loading="lazy">{% endif %}</td>
             <td>{{ o.deceased_name or "" }}</td>
             <td>{{ o.published_date or "" }}</td>
             <td>{{ o.death_date or "" }}</td>
@@ -44,19 +53,19 @@
 {% if total_pages > 1 %}
 <div class="pagination">
     {% if page > 1 %}
-    <a href="?page={{ page - 1 }}&search={{ search }}&site_id={{ site_id }}">&laquo; Prev</a>
+    <a href="?page={{ page - 1 }}&search={{ search }}&state={{ state }}&site_id={{ site_id }}&city={{ city }}">&laquo; Prev</a>
     {% endif %}
     {% for p in range(1, total_pages + 1) %}
         {% if p == page %}
-        <a class="active" href="?page={{ p }}&search={{ search }}&site_id={{ site_id }}">{{ p }}</a>
+        <a class="active" href="?page={{ p }}&search={{ search }}&state={{ state }}&site_id={{ site_id }}&city={{ city }}">{{ p }}</a>
         {% elif p <= 3 or p >= total_pages - 2 or (p >= page - 2 and p <= page + 2) %}
-        <a href="?page={{ p }}&search={{ search }}&site_id={{ site_id }}">{{ p }}</a>
+        <a href="?page={{ p }}&search={{ search }}&state={{ state }}&site_id={{ site_id }}&city={{ city }}">{{ p }}</a>
         {% elif p == 4 or p == total_pages - 3 %}
         <span>...</span>
         {% endif %}
     {% endfor %}
     {% if page < total_pages %}
-    <a href="?page={{ page + 1 }}&search={{ search }}&site_id={{ site_id }}">Next &raquo;</a>
+    <a href="?page={{ page + 1 }}&search={{ search }}&state={{ state }}&site_id={{ site_id }}&city={{ city }}">Next &raquo;</a>
     {% endif %}
 </div>
 {% endif %}

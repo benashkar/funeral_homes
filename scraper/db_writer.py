@@ -12,10 +12,10 @@ logger = get_logger(__name__)
 # SQL statements
 INSERT_OBIT_SQL = """
     INSERT IGNORE INTO obituaries
-        (site_id, legacy_url, deceased_name, published_date, death_date, funeral_home, obit_text)
+        (site_id, legacy_url, deceased_name, published_date, death_date, funeral_home, photo_url, obit_text)
     VALUES
         (%(site_id)s, %(legacy_url)s, %(deceased_name)s, %(published_date)s,
-         %(death_date)s, %(funeral_home)s, %(obit_text)s)
+         %(death_date)s, %(funeral_home)s, %(photo_url)s, %(obit_text)s)
 """
 
 INSERT_LOG_SQL = """
@@ -75,6 +75,7 @@ def upsert_obit(conn, obit_dict, site_id):
         "published_date": obit_dict.get("published_date"),
         "death_date": obit_dict.get("death_date"),
         "funeral_home": obit_dict.get("funeral_home"),
+        "photo_url": obit_dict.get("photo_url"),
         "obit_text": obit_dict.get("obit_text"),
     }
     cursor = conn.cursor()
