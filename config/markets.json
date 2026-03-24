@@ -1,33 +1,1754 @@
 [
-  {"site_id": "tx-brown",        "state": "texas",         "legacy_slug": "brown-county",       "type": "county"},
-  {"site_id": "tx-erath",        "state": "texas",         "legacy_slug": "erath-county",       "type": "county"},
-  {"site_id": "tx-palo-pinto",   "state": "texas",         "legacy_slug": "palo-pinto-county",  "type": "county"},
-  {"site_id": "tx-somervell",    "state": "texas",         "legacy_slug": "somervell-county",   "type": "county"},
-  {"site_id": "tx-runnels",      "state": "texas",         "legacy_slug": "runnels-county",     "type": "county"},
-  {"site_id": "tx-ellis",        "state": "texas",         "legacy_slug": "ellis-county",       "type": "county"},
-  {"site_id": "tx-jim-wells",    "state": "texas",         "legacy_slug": "jim-wells-county",   "type": "county"},
-  {"site_id": "tx-grayson",      "state": "texas",         "legacy_slug": "grayson-county",     "type": "county"},
-  {"site_id": "tx-fannin",       "state": "texas",         "legacy_slug": "fannin-county",      "type": "county"},
-  {"site_id": "oh-franklin",     "state": "ohio",          "legacy_slug": "franklin-county",    "type": "county"},
-  {"site_id": "oh-obetz",        "state": "ohio",          "legacy_slug": "obetz",              "type": "city"},
-  {"site_id": "oh-canal-winch",  "state": "ohio",          "legacy_slug": "canal-winchester",   "type": "city"},
-  {"site_id": "oh-hamilton-twp", "state": "ohio",          "legacy_slug": "hamilton-township",   "type": "city"},
-  {"site_id": "oh-lithopolis",   "state": "ohio",          "legacy_slug": "lithopolis",         "type": "city"},
-  {"site_id": "oh-lockbourne",   "state": "ohio",          "legacy_slug": "lockbourne",         "type": "city"},
-  {"site_id": "oh-groveport",    "state": "ohio",          "legacy_slug": "groveport",          "type": "city"},
-  {"site_id": "oh-madison-twp",  "state": "ohio",          "legacy_slug": "madison-township",   "type": "city"},
-  {"site_id": "oh-west-columbus","state": "ohio",          "legacy_slug": "west-columbus",      "type": "city"},
-  {"site_id": "oh-lincoln-vil",  "state": "ohio",          "legacy_slug": "lincoln-village",    "type": "city"},
-  {"site_id": "oh-prairie-twp",  "state": "ohio",          "legacy_slug": "prairie-township",   "type": "city"},
-  {"site_id": "oh-westgate",     "state": "ohio",          "legacy_slug": "westgate",           "type": "city"},
-  {"site_id": "oh-galloway",     "state": "ohio",          "legacy_slug": "galloway",           "type": "city"},
-  {"site_id": "oh-hilliard",     "state": "ohio",          "legacy_slug": "hilliard",           "type": "city"},
-  {"site_id": "oh-grove-city",   "state": "ohio",          "legacy_slug": "grove-city",         "type": "city"},
-  {"site_id": "oh-urbancrest",   "state": "ohio",          "legacy_slug": "urbancrest",         "type": "city"},
-  {"site_id": "oh-comm-point",   "state": "ohio",          "legacy_slug": "commercial-point",   "type": "city"},
-  {"site_id": "ma-grafton",      "state": "massachusetts", "legacy_slug": "grafton",            "type": "city"},
-  {"site_id": "ma-millbury",     "state": "massachusetts", "legacy_slug": "millbury",           "type": "city"},
-  {"site_id": "ma-sutton",       "state": "massachusetts", "legacy_slug": "sutton",             "type": "city"},
-  {"site_id": "ma-holden",       "state": "massachusetts", "legacy_slug": "holden",             "type": "city"},
-  {"site_id": "ga-claxton",      "state": "georgia",       "legacy_slug": "claxton",            "type": "city"}
+  {
+    "site_id": "tx-brown",
+    "state": "texas",
+    "legacy_slug": "brown-county",
+    "type": "county"
+  },
+  {
+    "site_id": "tx-erath",
+    "state": "texas",
+    "legacy_slug": "erath-county",
+    "type": "county"
+  },
+  {
+    "site_id": "tx-palo-pinto",
+    "state": "texas",
+    "legacy_slug": "palo-pinto-county",
+    "type": "county"
+  },
+  {
+    "site_id": "tx-somervell",
+    "state": "texas",
+    "legacy_slug": "somervell-county",
+    "type": "county"
+  },
+  {
+    "site_id": "tx-runnels",
+    "state": "texas",
+    "legacy_slug": "runnels-county",
+    "type": "county"
+  },
+  {
+    "site_id": "tx-ellis",
+    "state": "texas",
+    "legacy_slug": "ellis-county",
+    "type": "county"
+  },
+  {
+    "site_id": "tx-jim-wells",
+    "state": "texas",
+    "legacy_slug": "jim-wells-county",
+    "type": "county"
+  },
+  {
+    "site_id": "tx-grayson",
+    "state": "texas",
+    "legacy_slug": "grayson-county",
+    "type": "county"
+  },
+  {
+    "site_id": "tx-fannin",
+    "state": "texas",
+    "legacy_slug": "fannin-county",
+    "type": "county"
+  },
+  {
+    "site_id": "oh-franklin",
+    "state": "ohio",
+    "legacy_slug": "franklin-county",
+    "type": "county"
+  },
+  {
+    "site_id": "oh-obetz",
+    "state": "ohio",
+    "legacy_slug": "obetz",
+    "type": "city"
+  },
+  {
+    "site_id": "oh-canal-winch",
+    "state": "ohio",
+    "legacy_slug": "canal-winchester",
+    "type": "city"
+  },
+  {
+    "site_id": "oh-hamilton-twp",
+    "state": "ohio",
+    "legacy_slug": "hamilton-township",
+    "type": "city"
+  },
+  {
+    "site_id": "oh-lithopolis",
+    "state": "ohio",
+    "legacy_slug": "lithopolis",
+    "type": "city"
+  },
+  {
+    "site_id": "oh-lockbourne",
+    "state": "ohio",
+    "legacy_slug": "lockbourne",
+    "type": "city"
+  },
+  {
+    "site_id": "oh-groveport",
+    "state": "ohio",
+    "legacy_slug": "groveport",
+    "type": "city"
+  },
+  {
+    "site_id": "oh-madison-twp",
+    "state": "ohio",
+    "legacy_slug": "madison-township",
+    "type": "city"
+  },
+  {
+    "site_id": "oh-west-columbus",
+    "state": "ohio",
+    "legacy_slug": "west-columbus",
+    "type": "city"
+  },
+  {
+    "site_id": "oh-lincoln-vil",
+    "state": "ohio",
+    "legacy_slug": "lincoln-village",
+    "type": "city"
+  },
+  {
+    "site_id": "oh-prairie-twp",
+    "state": "ohio",
+    "legacy_slug": "prairie-township",
+    "type": "city"
+  },
+  {
+    "site_id": "oh-westgate",
+    "state": "ohio",
+    "legacy_slug": "westgate",
+    "type": "city"
+  },
+  {
+    "site_id": "oh-galloway",
+    "state": "ohio",
+    "legacy_slug": "galloway",
+    "type": "city"
+  },
+  {
+    "site_id": "oh-hilliard",
+    "state": "ohio",
+    "legacy_slug": "hilliard",
+    "type": "city"
+  },
+  {
+    "site_id": "oh-grove-city",
+    "state": "ohio",
+    "legacy_slug": "grove-city",
+    "type": "city"
+  },
+  {
+    "site_id": "oh-urbancrest",
+    "state": "ohio",
+    "legacy_slug": "urbancrest",
+    "type": "city"
+  },
+  {
+    "site_id": "oh-comm-point",
+    "state": "ohio",
+    "legacy_slug": "commercial-point",
+    "type": "city"
+  },
+  {
+    "site_id": "ma-grafton",
+    "state": "massachusetts",
+    "legacy_slug": "grafton",
+    "type": "city"
+  },
+  {
+    "site_id": "ma-millbury",
+    "state": "massachusetts",
+    "legacy_slug": "millbury",
+    "type": "city"
+  },
+  {
+    "site_id": "ma-sutton",
+    "state": "massachusetts",
+    "legacy_slug": "sutton",
+    "type": "city"
+  },
+  {
+    "site_id": "ma-holden",
+    "state": "massachusetts",
+    "legacy_slug": "holden",
+    "type": "city"
+  },
+  {
+    "site_id": "ga-claxton",
+    "state": "georgia",
+    "legacy_slug": "claxton",
+    "type": "city"
+  },
+  {
+    "site_id": "mn-aitkin",
+    "state": "minnesota",
+    "legacy_slug": "aitkin-county",
+    "type": "county"
+  },
+  {
+    "site_id": "mn-anoka",
+    "state": "minnesota",
+    "legacy_slug": "anoka-county",
+    "type": "county"
+  },
+  {
+    "site_id": "mn-becker",
+    "state": "minnesota",
+    "legacy_slug": "becker-county",
+    "type": "county"
+  },
+  {
+    "site_id": "mn-beltrami",
+    "state": "minnesota",
+    "legacy_slug": "beltrami-county",
+    "type": "county"
+  },
+  {
+    "site_id": "mn-benton",
+    "state": "minnesota",
+    "legacy_slug": "benton-county",
+    "type": "county"
+  },
+  {
+    "site_id": "mn-big-stone",
+    "state": "minnesota",
+    "legacy_slug": "big-stone-county",
+    "type": "county"
+  },
+  {
+    "site_id": "mn-blue-earth",
+    "state": "minnesota",
+    "legacy_slug": "blue-earth-county",
+    "type": "county"
+  },
+  {
+    "site_id": "mn-brown",
+    "state": "minnesota",
+    "legacy_slug": "brown-county",
+    "type": "county"
+  },
+  {
+    "site_id": "mn-carlton",
+    "state": "minnesota",
+    "legacy_slug": "carlton-county",
+    "type": "county"
+  },
+  {
+    "site_id": "mn-carver",
+    "state": "minnesota",
+    "legacy_slug": "carver-county",
+    "type": "county"
+  },
+  {
+    "site_id": "mn-cass",
+    "state": "minnesota",
+    "legacy_slug": "cass-county",
+    "type": "county"
+  },
+  {
+    "site_id": "mn-chippewa",
+    "state": "minnesota",
+    "legacy_slug": "chippewa-county",
+    "type": "county"
+  },
+  {
+    "site_id": "mn-chisago",
+    "state": "minnesota",
+    "legacy_slug": "chisago-county",
+    "type": "county"
+  },
+  {
+    "site_id": "mn-clay",
+    "state": "minnesota",
+    "legacy_slug": "clay-county",
+    "type": "county"
+  },
+  {
+    "site_id": "mn-clearwater",
+    "state": "minnesota",
+    "legacy_slug": "clearwater-county",
+    "type": "county"
+  },
+  {
+    "site_id": "mn-cook",
+    "state": "minnesota",
+    "legacy_slug": "cook-county",
+    "type": "county"
+  },
+  {
+    "site_id": "mn-cottonwood",
+    "state": "minnesota",
+    "legacy_slug": "cottonwood-county",
+    "type": "county"
+  },
+  {
+    "site_id": "mn-crow-wing",
+    "state": "minnesota",
+    "legacy_slug": "crow-wing-county",
+    "type": "county"
+  },
+  {
+    "site_id": "mn-dakota",
+    "state": "minnesota",
+    "legacy_slug": "dakota-county",
+    "type": "county"
+  },
+  {
+    "site_id": "mn-dodge",
+    "state": "minnesota",
+    "legacy_slug": "dodge-county",
+    "type": "county"
+  },
+  {
+    "site_id": "mn-douglas",
+    "state": "minnesota",
+    "legacy_slug": "douglas-county",
+    "type": "county"
+  },
+  {
+    "site_id": "mn-faribault",
+    "state": "minnesota",
+    "legacy_slug": "faribault-county",
+    "type": "county"
+  },
+  {
+    "site_id": "mn-fillmore",
+    "state": "minnesota",
+    "legacy_slug": "fillmore-county",
+    "type": "county"
+  },
+  {
+    "site_id": "mn-freeborn",
+    "state": "minnesota",
+    "legacy_slug": "freeborn-county",
+    "type": "county"
+  },
+  {
+    "site_id": "mn-goodhue",
+    "state": "minnesota",
+    "legacy_slug": "goodhue-county",
+    "type": "county"
+  },
+  {
+    "site_id": "mn-grant",
+    "state": "minnesota",
+    "legacy_slug": "grant-county",
+    "type": "county"
+  },
+  {
+    "site_id": "mn-hennepin",
+    "state": "minnesota",
+    "legacy_slug": "hennepin-county",
+    "type": "county"
+  },
+  {
+    "site_id": "mn-houston",
+    "state": "minnesota",
+    "legacy_slug": "houston-county",
+    "type": "county"
+  },
+  {
+    "site_id": "mn-hubbard",
+    "state": "minnesota",
+    "legacy_slug": "hubbard-county",
+    "type": "county"
+  },
+  {
+    "site_id": "mn-isanti",
+    "state": "minnesota",
+    "legacy_slug": "isanti-county",
+    "type": "county"
+  },
+  {
+    "site_id": "mn-itasca",
+    "state": "minnesota",
+    "legacy_slug": "itasca-county",
+    "type": "county"
+  },
+  {
+    "site_id": "mn-jackson",
+    "state": "minnesota",
+    "legacy_slug": "jackson-county",
+    "type": "county"
+  },
+  {
+    "site_id": "mn-kanabec",
+    "state": "minnesota",
+    "legacy_slug": "kanabec-county",
+    "type": "county"
+  },
+  {
+    "site_id": "mn-kandiyohi",
+    "state": "minnesota",
+    "legacy_slug": "kandiyohi-county",
+    "type": "county"
+  },
+  {
+    "site_id": "mn-kittson",
+    "state": "minnesota",
+    "legacy_slug": "kittson-county",
+    "type": "county"
+  },
+  {
+    "site_id": "mn-koochiching",
+    "state": "minnesota",
+    "legacy_slug": "koochiching-county",
+    "type": "county"
+  },
+  {
+    "site_id": "mn-lac-qui-parle",
+    "state": "minnesota",
+    "legacy_slug": "lac-qui-parle-county",
+    "type": "county"
+  },
+  {
+    "site_id": "mn-lake",
+    "state": "minnesota",
+    "legacy_slug": "lake-county",
+    "type": "county"
+  },
+  {
+    "site_id": "mn-lake-of-the-woods",
+    "state": "minnesota",
+    "legacy_slug": "lake-of-the-woods-county",
+    "type": "county"
+  },
+  {
+    "site_id": "mn-le-sueur",
+    "state": "minnesota",
+    "legacy_slug": "le-sueur-county",
+    "type": "county"
+  },
+  {
+    "site_id": "mn-lincoln",
+    "state": "minnesota",
+    "legacy_slug": "lincoln-county",
+    "type": "county"
+  },
+  {
+    "site_id": "mn-lyon",
+    "state": "minnesota",
+    "legacy_slug": "lyon-county",
+    "type": "county"
+  },
+  {
+    "site_id": "mn-mahnomen",
+    "state": "minnesota",
+    "legacy_slug": "mahnomen-county",
+    "type": "county"
+  },
+  {
+    "site_id": "mn-marshall",
+    "state": "minnesota",
+    "legacy_slug": "marshall-county",
+    "type": "county"
+  },
+  {
+    "site_id": "mn-martin",
+    "state": "minnesota",
+    "legacy_slug": "martin-county",
+    "type": "county"
+  },
+  {
+    "site_id": "mn-mcleod",
+    "state": "minnesota",
+    "legacy_slug": "mcleod-county",
+    "type": "county"
+  },
+  {
+    "site_id": "mn-meeker",
+    "state": "minnesota",
+    "legacy_slug": "meeker-county",
+    "type": "county"
+  },
+  {
+    "site_id": "mn-mille-lacs",
+    "state": "minnesota",
+    "legacy_slug": "mille-lacs-county",
+    "type": "county"
+  },
+  {
+    "site_id": "mn-morrison",
+    "state": "minnesota",
+    "legacy_slug": "morrison-county",
+    "type": "county"
+  },
+  {
+    "site_id": "mn-mower",
+    "state": "minnesota",
+    "legacy_slug": "mower-county",
+    "type": "county"
+  },
+  {
+    "site_id": "mn-murray",
+    "state": "minnesota",
+    "legacy_slug": "murray-county",
+    "type": "county"
+  },
+  {
+    "site_id": "mn-nicollet",
+    "state": "minnesota",
+    "legacy_slug": "nicollet-county",
+    "type": "county"
+  },
+  {
+    "site_id": "mn-nobles",
+    "state": "minnesota",
+    "legacy_slug": "nobles-county",
+    "type": "county"
+  },
+  {
+    "site_id": "mn-norman",
+    "state": "minnesota",
+    "legacy_slug": "norman-county",
+    "type": "county"
+  },
+  {
+    "site_id": "mn-olmsted",
+    "state": "minnesota",
+    "legacy_slug": "olmsted-county",
+    "type": "county"
+  },
+  {
+    "site_id": "mn-otter-tail",
+    "state": "minnesota",
+    "legacy_slug": "otter-tail-county",
+    "type": "county"
+  },
+  {
+    "site_id": "mn-pennington",
+    "state": "minnesota",
+    "legacy_slug": "pennington-county",
+    "type": "county"
+  },
+  {
+    "site_id": "mn-pine",
+    "state": "minnesota",
+    "legacy_slug": "pine-county",
+    "type": "county"
+  },
+  {
+    "site_id": "mn-pipestone",
+    "state": "minnesota",
+    "legacy_slug": "pipestone-county",
+    "type": "county"
+  },
+  {
+    "site_id": "mn-polk",
+    "state": "minnesota",
+    "legacy_slug": "polk-county",
+    "type": "county"
+  },
+  {
+    "site_id": "mn-pope",
+    "state": "minnesota",
+    "legacy_slug": "pope-county",
+    "type": "county"
+  },
+  {
+    "site_id": "mn-ramsey",
+    "state": "minnesota",
+    "legacy_slug": "ramsey-county",
+    "type": "county"
+  },
+  {
+    "site_id": "mn-red-lake",
+    "state": "minnesota",
+    "legacy_slug": "red-lake-county",
+    "type": "county"
+  },
+  {
+    "site_id": "mn-redwood",
+    "state": "minnesota",
+    "legacy_slug": "redwood-county",
+    "type": "county"
+  },
+  {
+    "site_id": "mn-renville",
+    "state": "minnesota",
+    "legacy_slug": "renville-county",
+    "type": "county"
+  },
+  {
+    "site_id": "mn-rice",
+    "state": "minnesota",
+    "legacy_slug": "rice-county",
+    "type": "county"
+  },
+  {
+    "site_id": "mn-rock",
+    "state": "minnesota",
+    "legacy_slug": "rock-county",
+    "type": "county"
+  },
+  {
+    "site_id": "mn-roseau",
+    "state": "minnesota",
+    "legacy_slug": "roseau-county",
+    "type": "county"
+  },
+  {
+    "site_id": "mn-st-louis",
+    "state": "minnesota",
+    "legacy_slug": "st-louis-county",
+    "type": "county"
+  },
+  {
+    "site_id": "mn-scott",
+    "state": "minnesota",
+    "legacy_slug": "scott-county",
+    "type": "county"
+  },
+  {
+    "site_id": "mn-sherburne",
+    "state": "minnesota",
+    "legacy_slug": "sherburne-county",
+    "type": "county"
+  },
+  {
+    "site_id": "mn-sibley",
+    "state": "minnesota",
+    "legacy_slug": "sibley-county",
+    "type": "county"
+  },
+  {
+    "site_id": "mn-stearns",
+    "state": "minnesota",
+    "legacy_slug": "stearns-county",
+    "type": "county"
+  },
+  {
+    "site_id": "mn-steele",
+    "state": "minnesota",
+    "legacy_slug": "steele-county",
+    "type": "county"
+  },
+  {
+    "site_id": "mn-stevens",
+    "state": "minnesota",
+    "legacy_slug": "stevens-county",
+    "type": "county"
+  },
+  {
+    "site_id": "mn-swift",
+    "state": "minnesota",
+    "legacy_slug": "swift-county",
+    "type": "county"
+  },
+  {
+    "site_id": "mn-todd",
+    "state": "minnesota",
+    "legacy_slug": "todd-county",
+    "type": "county"
+  },
+  {
+    "site_id": "mn-traverse",
+    "state": "minnesota",
+    "legacy_slug": "traverse-county",
+    "type": "county"
+  },
+  {
+    "site_id": "mn-wabasha",
+    "state": "minnesota",
+    "legacy_slug": "wabasha-county",
+    "type": "county"
+  },
+  {
+    "site_id": "mn-wadena",
+    "state": "minnesota",
+    "legacy_slug": "wadena-county",
+    "type": "county"
+  },
+  {
+    "site_id": "mn-waseca",
+    "state": "minnesota",
+    "legacy_slug": "waseca-county",
+    "type": "county"
+  },
+  {
+    "site_id": "mn-washington",
+    "state": "minnesota",
+    "legacy_slug": "washington-county",
+    "type": "county"
+  },
+  {
+    "site_id": "mn-watonwan",
+    "state": "minnesota",
+    "legacy_slug": "watonwan-county",
+    "type": "county"
+  },
+  {
+    "site_id": "mn-wilkin",
+    "state": "minnesota",
+    "legacy_slug": "wilkin-county",
+    "type": "county"
+  },
+  {
+    "site_id": "mn-winona",
+    "state": "minnesota",
+    "legacy_slug": "winona-county",
+    "type": "county"
+  },
+  {
+    "site_id": "mn-wright",
+    "state": "minnesota",
+    "legacy_slug": "wright-county",
+    "type": "county"
+  },
+  {
+    "site_id": "mn-yellow-medicine",
+    "state": "minnesota",
+    "legacy_slug": "yellow-medicine-county",
+    "type": "county"
+  },
+  {
+    "site_id": "wi-adams",
+    "state": "wisconsin",
+    "legacy_slug": "adams-county",
+    "type": "county"
+  },
+  {
+    "site_id": "wi-ashland",
+    "state": "wisconsin",
+    "legacy_slug": "ashland-county",
+    "type": "county"
+  },
+  {
+    "site_id": "wi-barron",
+    "state": "wisconsin",
+    "legacy_slug": "barron-county",
+    "type": "county"
+  },
+  {
+    "site_id": "wi-bayfield",
+    "state": "wisconsin",
+    "legacy_slug": "bayfield-county",
+    "type": "county"
+  },
+  {
+    "site_id": "wi-brown",
+    "state": "wisconsin",
+    "legacy_slug": "brown-county",
+    "type": "county"
+  },
+  {
+    "site_id": "wi-buffalo",
+    "state": "wisconsin",
+    "legacy_slug": "buffalo-county",
+    "type": "county"
+  },
+  {
+    "site_id": "wi-burnett",
+    "state": "wisconsin",
+    "legacy_slug": "burnett-county",
+    "type": "county"
+  },
+  {
+    "site_id": "wi-calumet",
+    "state": "wisconsin",
+    "legacy_slug": "calumet-county",
+    "type": "county"
+  },
+  {
+    "site_id": "wi-chippewa",
+    "state": "wisconsin",
+    "legacy_slug": "chippewa-county",
+    "type": "county"
+  },
+  {
+    "site_id": "wi-clark",
+    "state": "wisconsin",
+    "legacy_slug": "clark-county",
+    "type": "county"
+  },
+  {
+    "site_id": "wi-columbia",
+    "state": "wisconsin",
+    "legacy_slug": "columbia-county",
+    "type": "county"
+  },
+  {
+    "site_id": "wi-crawford",
+    "state": "wisconsin",
+    "legacy_slug": "crawford-county",
+    "type": "county"
+  },
+  {
+    "site_id": "wi-dane",
+    "state": "wisconsin",
+    "legacy_slug": "dane-county",
+    "type": "county"
+  },
+  {
+    "site_id": "wi-dodge",
+    "state": "wisconsin",
+    "legacy_slug": "dodge-county",
+    "type": "county"
+  },
+  {
+    "site_id": "wi-door",
+    "state": "wisconsin",
+    "legacy_slug": "door-county",
+    "type": "county"
+  },
+  {
+    "site_id": "wi-douglas",
+    "state": "wisconsin",
+    "legacy_slug": "douglas-county",
+    "type": "county"
+  },
+  {
+    "site_id": "wi-dunn",
+    "state": "wisconsin",
+    "legacy_slug": "dunn-county",
+    "type": "county"
+  },
+  {
+    "site_id": "wi-eau-claire",
+    "state": "wisconsin",
+    "legacy_slug": "eau-claire-county",
+    "type": "county"
+  },
+  {
+    "site_id": "wi-florence",
+    "state": "wisconsin",
+    "legacy_slug": "florence-county",
+    "type": "county"
+  },
+  {
+    "site_id": "wi-fond-du-lac",
+    "state": "wisconsin",
+    "legacy_slug": "fond-du-lac-county",
+    "type": "county"
+  },
+  {
+    "site_id": "wi-forest",
+    "state": "wisconsin",
+    "legacy_slug": "forest-county",
+    "type": "county"
+  },
+  {
+    "site_id": "wi-grant",
+    "state": "wisconsin",
+    "legacy_slug": "grant-county",
+    "type": "county"
+  },
+  {
+    "site_id": "wi-green",
+    "state": "wisconsin",
+    "legacy_slug": "green-county",
+    "type": "county"
+  },
+  {
+    "site_id": "wi-green-lake",
+    "state": "wisconsin",
+    "legacy_slug": "green-lake-county",
+    "type": "county"
+  },
+  {
+    "site_id": "wi-iowa",
+    "state": "wisconsin",
+    "legacy_slug": "iowa-county",
+    "type": "county"
+  },
+  {
+    "site_id": "wi-iron",
+    "state": "wisconsin",
+    "legacy_slug": "iron-county",
+    "type": "county"
+  },
+  {
+    "site_id": "wi-jackson",
+    "state": "wisconsin",
+    "legacy_slug": "jackson-county",
+    "type": "county"
+  },
+  {
+    "site_id": "wi-jefferson",
+    "state": "wisconsin",
+    "legacy_slug": "jefferson-county",
+    "type": "county"
+  },
+  {
+    "site_id": "wi-juneau",
+    "state": "wisconsin",
+    "legacy_slug": "juneau-county",
+    "type": "county"
+  },
+  {
+    "site_id": "wi-kenosha",
+    "state": "wisconsin",
+    "legacy_slug": "kenosha-county",
+    "type": "county"
+  },
+  {
+    "site_id": "wi-kewaunee",
+    "state": "wisconsin",
+    "legacy_slug": "kewaunee-county",
+    "type": "county"
+  },
+  {
+    "site_id": "wi-la-crosse",
+    "state": "wisconsin",
+    "legacy_slug": "la-crosse-county",
+    "type": "county"
+  },
+  {
+    "site_id": "wi-lafayette",
+    "state": "wisconsin",
+    "legacy_slug": "lafayette-county",
+    "type": "county"
+  },
+  {
+    "site_id": "wi-langlade",
+    "state": "wisconsin",
+    "legacy_slug": "langlade-county",
+    "type": "county"
+  },
+  {
+    "site_id": "wi-lincoln",
+    "state": "wisconsin",
+    "legacy_slug": "lincoln-county",
+    "type": "county"
+  },
+  {
+    "site_id": "wi-manitowoc",
+    "state": "wisconsin",
+    "legacy_slug": "manitowoc-county",
+    "type": "county"
+  },
+  {
+    "site_id": "wi-marathon",
+    "state": "wisconsin",
+    "legacy_slug": "marathon-county",
+    "type": "county"
+  },
+  {
+    "site_id": "wi-marinette",
+    "state": "wisconsin",
+    "legacy_slug": "marinette-county",
+    "type": "county"
+  },
+  {
+    "site_id": "wi-marquette",
+    "state": "wisconsin",
+    "legacy_slug": "marquette-county",
+    "type": "county"
+  },
+  {
+    "site_id": "wi-menominee",
+    "state": "wisconsin",
+    "legacy_slug": "menominee-county",
+    "type": "county"
+  },
+  {
+    "site_id": "wi-milwaukee",
+    "state": "wisconsin",
+    "legacy_slug": "milwaukee-county",
+    "type": "county"
+  },
+  {
+    "site_id": "wi-monroe",
+    "state": "wisconsin",
+    "legacy_slug": "monroe-county",
+    "type": "county"
+  },
+  {
+    "site_id": "wi-oconto",
+    "state": "wisconsin",
+    "legacy_slug": "oconto-county",
+    "type": "county"
+  },
+  {
+    "site_id": "wi-oneida",
+    "state": "wisconsin",
+    "legacy_slug": "oneida-county",
+    "type": "county"
+  },
+  {
+    "site_id": "wi-outagamie",
+    "state": "wisconsin",
+    "legacy_slug": "outagamie-county",
+    "type": "county"
+  },
+  {
+    "site_id": "wi-ozaukee",
+    "state": "wisconsin",
+    "legacy_slug": "ozaukee-county",
+    "type": "county"
+  },
+  {
+    "site_id": "wi-pepin",
+    "state": "wisconsin",
+    "legacy_slug": "pepin-county",
+    "type": "county"
+  },
+  {
+    "site_id": "wi-pierce",
+    "state": "wisconsin",
+    "legacy_slug": "pierce-county",
+    "type": "county"
+  },
+  {
+    "site_id": "wi-polk",
+    "state": "wisconsin",
+    "legacy_slug": "polk-county",
+    "type": "county"
+  },
+  {
+    "site_id": "wi-portage",
+    "state": "wisconsin",
+    "legacy_slug": "portage-county",
+    "type": "county"
+  },
+  {
+    "site_id": "wi-price",
+    "state": "wisconsin",
+    "legacy_slug": "price-county",
+    "type": "county"
+  },
+  {
+    "site_id": "wi-racine",
+    "state": "wisconsin",
+    "legacy_slug": "racine-county",
+    "type": "county"
+  },
+  {
+    "site_id": "wi-richland",
+    "state": "wisconsin",
+    "legacy_slug": "richland-county",
+    "type": "county"
+  },
+  {
+    "site_id": "wi-rock",
+    "state": "wisconsin",
+    "legacy_slug": "rock-county",
+    "type": "county"
+  },
+  {
+    "site_id": "wi-rusk",
+    "state": "wisconsin",
+    "legacy_slug": "rusk-county",
+    "type": "county"
+  },
+  {
+    "site_id": "wi-st-croix",
+    "state": "wisconsin",
+    "legacy_slug": "st-croix-county",
+    "type": "county"
+  },
+  {
+    "site_id": "wi-sauk",
+    "state": "wisconsin",
+    "legacy_slug": "sauk-county",
+    "type": "county"
+  },
+  {
+    "site_id": "wi-sawyer",
+    "state": "wisconsin",
+    "legacy_slug": "sawyer-county",
+    "type": "county"
+  },
+  {
+    "site_id": "wi-shawano",
+    "state": "wisconsin",
+    "legacy_slug": "shawano-county",
+    "type": "county"
+  },
+  {
+    "site_id": "wi-sheboygan",
+    "state": "wisconsin",
+    "legacy_slug": "sheboygan-county",
+    "type": "county"
+  },
+  {
+    "site_id": "wi-taylor",
+    "state": "wisconsin",
+    "legacy_slug": "taylor-county",
+    "type": "county"
+  },
+  {
+    "site_id": "wi-trempealeau",
+    "state": "wisconsin",
+    "legacy_slug": "trempealeau-county",
+    "type": "county"
+  },
+  {
+    "site_id": "wi-vernon",
+    "state": "wisconsin",
+    "legacy_slug": "vernon-county",
+    "type": "county"
+  },
+  {
+    "site_id": "wi-vilas",
+    "state": "wisconsin",
+    "legacy_slug": "vilas-county",
+    "type": "county"
+  },
+  {
+    "site_id": "wi-walworth",
+    "state": "wisconsin",
+    "legacy_slug": "walworth-county",
+    "type": "county"
+  },
+  {
+    "site_id": "wi-washburn",
+    "state": "wisconsin",
+    "legacy_slug": "washburn-county",
+    "type": "county"
+  },
+  {
+    "site_id": "wi-washington",
+    "state": "wisconsin",
+    "legacy_slug": "washington-county",
+    "type": "county"
+  },
+  {
+    "site_id": "wi-waukesha",
+    "state": "wisconsin",
+    "legacy_slug": "waukesha-county",
+    "type": "county"
+  },
+  {
+    "site_id": "wi-waupaca",
+    "state": "wisconsin",
+    "legacy_slug": "waupaca-county",
+    "type": "county"
+  },
+  {
+    "site_id": "wi-waushara",
+    "state": "wisconsin",
+    "legacy_slug": "waushara-county",
+    "type": "county"
+  },
+  {
+    "site_id": "wi-winnebago",
+    "state": "wisconsin",
+    "legacy_slug": "winnebago-county",
+    "type": "county"
+  },
+  {
+    "site_id": "wi-wood",
+    "state": "wisconsin",
+    "legacy_slug": "wood-county",
+    "type": "county"
+  },
+  {
+    "site_id": "il-adams",
+    "state": "illinois",
+    "legacy_slug": "adams-county",
+    "type": "county"
+  },
+  {
+    "site_id": "il-alexander",
+    "state": "illinois",
+    "legacy_slug": "alexander-county",
+    "type": "county"
+  },
+  {
+    "site_id": "il-bond",
+    "state": "illinois",
+    "legacy_slug": "bond-county",
+    "type": "county"
+  },
+  {
+    "site_id": "il-boone",
+    "state": "illinois",
+    "legacy_slug": "boone-county",
+    "type": "county"
+  },
+  {
+    "site_id": "il-brown",
+    "state": "illinois",
+    "legacy_slug": "brown-county",
+    "type": "county"
+  },
+  {
+    "site_id": "il-bureau",
+    "state": "illinois",
+    "legacy_slug": "bureau-county",
+    "type": "county"
+  },
+  {
+    "site_id": "il-calhoun",
+    "state": "illinois",
+    "legacy_slug": "calhoun-county",
+    "type": "county"
+  },
+  {
+    "site_id": "il-carroll",
+    "state": "illinois",
+    "legacy_slug": "carroll-county",
+    "type": "county"
+  },
+  {
+    "site_id": "il-cass",
+    "state": "illinois",
+    "legacy_slug": "cass-county",
+    "type": "county"
+  },
+  {
+    "site_id": "il-champaign",
+    "state": "illinois",
+    "legacy_slug": "champaign-county",
+    "type": "county"
+  },
+  {
+    "site_id": "il-christian",
+    "state": "illinois",
+    "legacy_slug": "christian-county",
+    "type": "county"
+  },
+  {
+    "site_id": "il-clark",
+    "state": "illinois",
+    "legacy_slug": "clark-county",
+    "type": "county"
+  },
+  {
+    "site_id": "il-clay",
+    "state": "illinois",
+    "legacy_slug": "clay-county",
+    "type": "county"
+  },
+  {
+    "site_id": "il-clinton",
+    "state": "illinois",
+    "legacy_slug": "clinton-county",
+    "type": "county"
+  },
+  {
+    "site_id": "il-coles",
+    "state": "illinois",
+    "legacy_slug": "coles-county",
+    "type": "county"
+  },
+  {
+    "site_id": "il-cook",
+    "state": "illinois",
+    "legacy_slug": "cook-county",
+    "type": "county"
+  },
+  {
+    "site_id": "il-crawford",
+    "state": "illinois",
+    "legacy_slug": "crawford-county",
+    "type": "county"
+  },
+  {
+    "site_id": "il-cumberland",
+    "state": "illinois",
+    "legacy_slug": "cumberland-county",
+    "type": "county"
+  },
+  {
+    "site_id": "il-dekalb",
+    "state": "illinois",
+    "legacy_slug": "dekalb-county",
+    "type": "county"
+  },
+  {
+    "site_id": "il-de-witt",
+    "state": "illinois",
+    "legacy_slug": "de-witt-county",
+    "type": "county"
+  },
+  {
+    "site_id": "il-douglas",
+    "state": "illinois",
+    "legacy_slug": "douglas-county",
+    "type": "county"
+  },
+  {
+    "site_id": "il-dupage",
+    "state": "illinois",
+    "legacy_slug": "dupage-county",
+    "type": "county"
+  },
+  {
+    "site_id": "il-edgar",
+    "state": "illinois",
+    "legacy_slug": "edgar-county",
+    "type": "county"
+  },
+  {
+    "site_id": "il-edwards",
+    "state": "illinois",
+    "legacy_slug": "edwards-county",
+    "type": "county"
+  },
+  {
+    "site_id": "il-effingham",
+    "state": "illinois",
+    "legacy_slug": "effingham-county",
+    "type": "county"
+  },
+  {
+    "site_id": "il-fayette",
+    "state": "illinois",
+    "legacy_slug": "fayette-county",
+    "type": "county"
+  },
+  {
+    "site_id": "il-ford",
+    "state": "illinois",
+    "legacy_slug": "ford-county",
+    "type": "county"
+  },
+  {
+    "site_id": "il-franklin",
+    "state": "illinois",
+    "legacy_slug": "franklin-county",
+    "type": "county"
+  },
+  {
+    "site_id": "il-fulton",
+    "state": "illinois",
+    "legacy_slug": "fulton-county",
+    "type": "county"
+  },
+  {
+    "site_id": "il-gallatin",
+    "state": "illinois",
+    "legacy_slug": "gallatin-county",
+    "type": "county"
+  },
+  {
+    "site_id": "il-greene",
+    "state": "illinois",
+    "legacy_slug": "greene-county",
+    "type": "county"
+  },
+  {
+    "site_id": "il-grundy",
+    "state": "illinois",
+    "legacy_slug": "grundy-county",
+    "type": "county"
+  },
+  {
+    "site_id": "il-hamilton",
+    "state": "illinois",
+    "legacy_slug": "hamilton-county",
+    "type": "county"
+  },
+  {
+    "site_id": "il-hancock",
+    "state": "illinois",
+    "legacy_slug": "hancock-county",
+    "type": "county"
+  },
+  {
+    "site_id": "il-hardin",
+    "state": "illinois",
+    "legacy_slug": "hardin-county",
+    "type": "county"
+  },
+  {
+    "site_id": "il-henderson",
+    "state": "illinois",
+    "legacy_slug": "henderson-county",
+    "type": "county"
+  },
+  {
+    "site_id": "il-henry",
+    "state": "illinois",
+    "legacy_slug": "henry-county",
+    "type": "county"
+  },
+  {
+    "site_id": "il-iroquois",
+    "state": "illinois",
+    "legacy_slug": "iroquois-county",
+    "type": "county"
+  },
+  {
+    "site_id": "il-jackson",
+    "state": "illinois",
+    "legacy_slug": "jackson-county",
+    "type": "county"
+  },
+  {
+    "site_id": "il-jasper",
+    "state": "illinois",
+    "legacy_slug": "jasper-county",
+    "type": "county"
+  },
+  {
+    "site_id": "il-jefferson",
+    "state": "illinois",
+    "legacy_slug": "jefferson-county",
+    "type": "county"
+  },
+  {
+    "site_id": "il-jersey",
+    "state": "illinois",
+    "legacy_slug": "jersey-county",
+    "type": "county"
+  },
+  {
+    "site_id": "il-jo-daviess",
+    "state": "illinois",
+    "legacy_slug": "jo-daviess-county",
+    "type": "county"
+  },
+  {
+    "site_id": "il-johnson",
+    "state": "illinois",
+    "legacy_slug": "johnson-county",
+    "type": "county"
+  },
+  {
+    "site_id": "il-kane",
+    "state": "illinois",
+    "legacy_slug": "kane-county",
+    "type": "county"
+  },
+  {
+    "site_id": "il-kankakee",
+    "state": "illinois",
+    "legacy_slug": "kankakee-county",
+    "type": "county"
+  },
+  {
+    "site_id": "il-kendall",
+    "state": "illinois",
+    "legacy_slug": "kendall-county",
+    "type": "county"
+  },
+  {
+    "site_id": "il-knox",
+    "state": "illinois",
+    "legacy_slug": "knox-county",
+    "type": "county"
+  },
+  {
+    "site_id": "il-la-salle",
+    "state": "illinois",
+    "legacy_slug": "la-salle-county",
+    "type": "county"
+  },
+  {
+    "site_id": "il-lake",
+    "state": "illinois",
+    "legacy_slug": "lake-county",
+    "type": "county"
+  },
+  {
+    "site_id": "il-lawrence",
+    "state": "illinois",
+    "legacy_slug": "lawrence-county",
+    "type": "county"
+  },
+  {
+    "site_id": "il-lee",
+    "state": "illinois",
+    "legacy_slug": "lee-county",
+    "type": "county"
+  },
+  {
+    "site_id": "il-livingston",
+    "state": "illinois",
+    "legacy_slug": "livingston-county",
+    "type": "county"
+  },
+  {
+    "site_id": "il-logan",
+    "state": "illinois",
+    "legacy_slug": "logan-county",
+    "type": "county"
+  },
+  {
+    "site_id": "il-mcdonough",
+    "state": "illinois",
+    "legacy_slug": "mcdonough-county",
+    "type": "county"
+  },
+  {
+    "site_id": "il-mchenry",
+    "state": "illinois",
+    "legacy_slug": "mchenry-county",
+    "type": "county"
+  },
+  {
+    "site_id": "il-mclean",
+    "state": "illinois",
+    "legacy_slug": "mclean-county",
+    "type": "county"
+  },
+  {
+    "site_id": "il-macon",
+    "state": "illinois",
+    "legacy_slug": "macon-county",
+    "type": "county"
+  },
+  {
+    "site_id": "il-macoupin",
+    "state": "illinois",
+    "legacy_slug": "macoupin-county",
+    "type": "county"
+  },
+  {
+    "site_id": "il-madison",
+    "state": "illinois",
+    "legacy_slug": "madison-county",
+    "type": "county"
+  },
+  {
+    "site_id": "il-marion",
+    "state": "illinois",
+    "legacy_slug": "marion-county",
+    "type": "county"
+  },
+  {
+    "site_id": "il-marshall",
+    "state": "illinois",
+    "legacy_slug": "marshall-county",
+    "type": "county"
+  },
+  {
+    "site_id": "il-mason",
+    "state": "illinois",
+    "legacy_slug": "mason-county",
+    "type": "county"
+  },
+  {
+    "site_id": "il-massac",
+    "state": "illinois",
+    "legacy_slug": "massac-county",
+    "type": "county"
+  },
+  {
+    "site_id": "il-menard",
+    "state": "illinois",
+    "legacy_slug": "menard-county",
+    "type": "county"
+  },
+  {
+    "site_id": "il-mercer",
+    "state": "illinois",
+    "legacy_slug": "mercer-county",
+    "type": "county"
+  },
+  {
+    "site_id": "il-monroe",
+    "state": "illinois",
+    "legacy_slug": "monroe-county",
+    "type": "county"
+  },
+  {
+    "site_id": "il-montgomery",
+    "state": "illinois",
+    "legacy_slug": "montgomery-county",
+    "type": "county"
+  },
+  {
+    "site_id": "il-morgan",
+    "state": "illinois",
+    "legacy_slug": "morgan-county",
+    "type": "county"
+  },
+  {
+    "site_id": "il-moultrie",
+    "state": "illinois",
+    "legacy_slug": "moultrie-county",
+    "type": "county"
+  },
+  {
+    "site_id": "il-ogle",
+    "state": "illinois",
+    "legacy_slug": "ogle-county",
+    "type": "county"
+  },
+  {
+    "site_id": "il-peoria",
+    "state": "illinois",
+    "legacy_slug": "peoria-county",
+    "type": "county"
+  },
+  {
+    "site_id": "il-perry",
+    "state": "illinois",
+    "legacy_slug": "perry-county",
+    "type": "county"
+  },
+  {
+    "site_id": "il-piatt",
+    "state": "illinois",
+    "legacy_slug": "piatt-county",
+    "type": "county"
+  },
+  {
+    "site_id": "il-pike",
+    "state": "illinois",
+    "legacy_slug": "pike-county",
+    "type": "county"
+  },
+  {
+    "site_id": "il-pope",
+    "state": "illinois",
+    "legacy_slug": "pope-county",
+    "type": "county"
+  },
+  {
+    "site_id": "il-pulaski",
+    "state": "illinois",
+    "legacy_slug": "pulaski-county",
+    "type": "county"
+  },
+  {
+    "site_id": "il-putnam",
+    "state": "illinois",
+    "legacy_slug": "putnam-county",
+    "type": "county"
+  },
+  {
+    "site_id": "il-randolph",
+    "state": "illinois",
+    "legacy_slug": "randolph-county",
+    "type": "county"
+  },
+  {
+    "site_id": "il-richland",
+    "state": "illinois",
+    "legacy_slug": "richland-county",
+    "type": "county"
+  },
+  {
+    "site_id": "il-rock-island",
+    "state": "illinois",
+    "legacy_slug": "rock-island-county",
+    "type": "county"
+  },
+  {
+    "site_id": "il-saline",
+    "state": "illinois",
+    "legacy_slug": "saline-county",
+    "type": "county"
+  },
+  {
+    "site_id": "il-sangamon",
+    "state": "illinois",
+    "legacy_slug": "sangamon-county",
+    "type": "county"
+  },
+  {
+    "site_id": "il-schuyler",
+    "state": "illinois",
+    "legacy_slug": "schuyler-county",
+    "type": "county"
+  },
+  {
+    "site_id": "il-scott",
+    "state": "illinois",
+    "legacy_slug": "scott-county",
+    "type": "county"
+  },
+  {
+    "site_id": "il-shelby",
+    "state": "illinois",
+    "legacy_slug": "shelby-county",
+    "type": "county"
+  },
+  {
+    "site_id": "il-st-clair",
+    "state": "illinois",
+    "legacy_slug": "st-clair-county",
+    "type": "county"
+  },
+  {
+    "site_id": "il-stark",
+    "state": "illinois",
+    "legacy_slug": "stark-county",
+    "type": "county"
+  },
+  {
+    "site_id": "il-stephenson",
+    "state": "illinois",
+    "legacy_slug": "stephenson-county",
+    "type": "county"
+  },
+  {
+    "site_id": "il-tazewell",
+    "state": "illinois",
+    "legacy_slug": "tazewell-county",
+    "type": "county"
+  },
+  {
+    "site_id": "il-union",
+    "state": "illinois",
+    "legacy_slug": "union-county",
+    "type": "county"
+  },
+  {
+    "site_id": "il-vermilion",
+    "state": "illinois",
+    "legacy_slug": "vermilion-county",
+    "type": "county"
+  },
+  {
+    "site_id": "il-wabash",
+    "state": "illinois",
+    "legacy_slug": "wabash-county",
+    "type": "county"
+  },
+  {
+    "site_id": "il-warren",
+    "state": "illinois",
+    "legacy_slug": "warren-county",
+    "type": "county"
+  },
+  {
+    "site_id": "il-washington",
+    "state": "illinois",
+    "legacy_slug": "washington-county",
+    "type": "county"
+  },
+  {
+    "site_id": "il-wayne",
+    "state": "illinois",
+    "legacy_slug": "wayne-county",
+    "type": "county"
+  },
+  {
+    "site_id": "il-white",
+    "state": "illinois",
+    "legacy_slug": "white-county",
+    "type": "county"
+  },
+  {
+    "site_id": "il-whiteside",
+    "state": "illinois",
+    "legacy_slug": "whiteside-county",
+    "type": "county"
+  },
+  {
+    "site_id": "il-will",
+    "state": "illinois",
+    "legacy_slug": "will-county",
+    "type": "county"
+  },
+  {
+    "site_id": "il-williamson",
+    "state": "illinois",
+    "legacy_slug": "williamson-county",
+    "type": "county"
+  },
+  {
+    "site_id": "il-winnebago",
+    "state": "illinois",
+    "legacy_slug": "winnebago-county",
+    "type": "county"
+  },
+  {
+    "site_id": "il-woodford",
+    "state": "illinois",
+    "legacy_slug": "woodford-county",
+    "type": "county"
+  }
 ]

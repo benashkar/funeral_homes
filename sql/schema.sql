@@ -12,6 +12,7 @@ CREATE TABLE IF NOT EXISTS obituaries (
     published_date  DATE,
     death_date      DATE,
     funeral_home    VARCHAR(255),
+    photo_url       VARCHAR(500)  DEFAULT NULL,
     obit_text       LONGTEXT,
     scraped_at      DATETIME      DEFAULT CURRENT_TIMESTAMP,
     sent_to_cms     TINYINT(1)    DEFAULT 0,

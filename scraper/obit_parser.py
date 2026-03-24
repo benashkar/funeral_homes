@@ -160,3 +160,24 @@ def parse_obit_text(soup):
 
     logger.warning("Could not find obituary text in JSON-LD")
     return None
+
+
+def parse_photo_url(soup):
+    """Extract the deceased's photo URL from JSON-LD Person block.
+
+    Legacy.com hosts photos on cache.legacy.net CDN. We store the URL,
+    not the image itself.
+
+    Args:
+        soup: BeautifulSoup object of a single obituary page.
+
+    Returns:
+        str (URL) or None.
+    """
+    blocks = _extract_jsonld(soup)
+    person = blocks.get("Person")
+    if person:
+        image = person.get("image") or ""
+        if image:
+            return image.strip()
+    return None
