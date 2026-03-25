@@ -205,8 +205,17 @@ def parse_photo_url(soup):
     return None
 
 
+_OG_TITLE_RE = re.compile(
+    r'Obituary\s*\(\d{4}\)\s*-\s*([^,]+),\s*([A-Z]{2})\b'
+)
+
+
 def parse_death_place(soup):
     """Extract death city and state from JSON-LD Person.deathPlace.
+
+    Fallback chain:
+      1. Person.deathPlace.address (structured data)
+      2. og:title meta tag: "Name Obituary (YYYY) - City, ST - Funeral Home"
 
     Args:
         soup: BeautifulSoup object of a single obituary page.
@@ -215,6 +224,8 @@ def parse_death_place(soup):
         dict with keys 'city' and 'state', values are str or None.
     """
     result = {"city": None, "state": None}
+
+    # Primary: Person.deathPlace
     blocks = _extract_jsonld(soup)
     person = blocks.get("Person")
     if person:
@@ -226,4 +237,17 @@ def parse_death_place(soup):
             result["city"] = city.strip()
         if state:
             result["state"] = state.strip()
+
+    if result["city"]:
+        return result
+
+    # Fallback: og:title "Name Obituary (2026) - City, ST - Funeral Home"
+    og = soup.find("meta", property="og:title")
+    if og:
+        content = og.get("content") or ""
+        match = _OG_TITLE_RE.search(content)
+        if match:
+            result["city"] = match.group(1).strip()
+            result["state"] = match.group(2).strip()
+
     return result

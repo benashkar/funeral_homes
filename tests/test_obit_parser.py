@@ -206,3 +206,17 @@ def test_parse_death_place_missing():
     place = parse_death_place(soup)
     assert place["city"] is None
     assert place["state"] is None
+
+
+def test_parse_death_place_og_title_fallback():
+    """When Person block is missing, extract city from og:title meta tag."""
+    html = """<html><head>
+    <meta property="og:title" content="John Smith Obituary (2026) - Madison, WI - Smith Funeral Home">
+    <script type="application/ld+json">
+    {"@context":"http://schema.org","@type":"NewsArticle","articleBody":"John passed away.","datePublished":"2026-03-24T00:00:00.000Z"}
+    </script>
+    </head><body></body></html>"""
+    soup = BeautifulSoup(html, "lxml")
+    place = parse_death_place(soup)
+    assert place["city"] == "Madison"
+    assert place["state"] == "WI"
