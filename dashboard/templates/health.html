@@ -1,0 +1,91 @@
+{% extends "base.html" %}
+{% block title %}Health — CR Obituaries{% endblock %}
+{% block content %}
+<h2>System Health</h2>
+
+{% for alert in alerts %}
+<div class="alert alert-{{ alert.level }}">
+    <strong>{{ alert.title }}</strong>
+    <p>{{ alert.detail }}</p>
+</div>
+{% endfor %}
+
+<div class="card mb-4">
+    <div class="card-header" style="background:#34495e; color:white; padding:12px 16px;">
+        <strong>Data Summary</strong>
+    </div>
+    <div class="card-body-table">
+        <table>
+            <tbody>
+                <tr><td><strong>Total obituaries</strong></td><td>{{ "{:,}".format(total_obits) }}</td></tr>
+                <tr><td><strong>Flagged deleted</strong></td><td>{{ "{:,}".format(deleted_obits) }}</td></tr>
+                <tr><td><strong>With city data</strong></td><td>{{ "{:,}".format(with_city) }} ({{ (100 * with_city // total_obits) if total_obits else 0 }}%)</td></tr>
+                <tr><td><strong>With photo</strong></td><td>{{ "{:,}".format(with_photo) }} ({{ (100 * with_photo // total_obits) if total_obits else 0 }}%)</td></tr>
+                <tr><td><strong>States</strong></td><td>{{ states }}</td></tr>
+                <tr><td><strong>Markets with data</strong></td><td>{{ "{:,}".format(markets) }}</td></tr>
+                <tr><td><strong>Markets scraped today</strong></td><td>{{ "{:,}".format(today_runs) }}</td></tr>
+                <tr><td><strong>Markets scraped yesterday</strong></td><td>{{ "{:,}".format(yesterday_runs) }}</td></tr>
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<div class="card mb-4">
+    <div class="card-header" style="background:#34495e; color:white; padding:12px 16px;">
+        <strong>Daily Scrape Log (Last 7 Days)</strong>
+    </div>
+    <div class="card-body-table">
+        <table>
+            <thead>
+                <tr>
+                    <th>Date</th>
+                    <th>Markets Scraped</th>
+                    <th>Obits Found</th>
+                    <th>New Obits</th>
+                    <th>Errors</th>
+                    <th>Status</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for day in daily_summary %}
+                <tr>
+                    <td>{{ day.run_date }}</td>
+                    <td>{{ "{:,}".format(day.markets_scraped) }}</td>
+                    <td>{{ "{:,}".format(day.total_found) }}</td>
+                    <td>{{ "{:,}".format(day.total_new) }}</td>
+                    <td>{{ day.error_count }}</td>
+                    <td>
+                        {% if day.error_count == 0 %}
+                        <span class="badge-ok">OK</span>
+                        {% else %}
+                        <span class="badge-warn">{{ day.error_count }} errors</span>
+                        {% endif %}
+                    </td>
+                </tr>
+                {% endfor %}
+                {% if not daily_summary %}
+                <tr><td colspan="6" style="text-align:center; color:#888;">No scrape data in last 7 days</td></tr>
+                {% endif %}
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<div class="card mb-4">
+    <div class="card-header" style="background:#34495e; color:white; padding:12px 16px;">
+        <strong>Cron Configuration</strong>
+    </div>
+    <div class="card-body-table">
+        <table>
+            <tbody>
+                <tr><td><strong>Service</strong></td><td>funeral-homes-scraper</td></tr>
+                <tr><td><strong>Schedule</strong></td><td>0 12 * * * (12:00 UTC / 6:00 AM CT daily)</td></tr>
+                <tr><td><strong>Workers</strong></td><td>8 parallel (SCRAPE_WORKERS env var)</td></tr>
+                <tr><td><strong>Rate limit</strong></td><td>1 req/sec global (polite to Legacy.com)</td></tr>
+                <tr><td><strong>Markets</strong></td><td>2,623 counties across 49 states + DC</td></tr>
+                <tr><td><strong>Expected runtime</strong></td><td>4-6 hours</td></tr>
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endblock %}

@@ -260,4 +260,106 @@ def create_app():
     def erd():
         return app.send_static_file("erd.html")
 
+    @app.route("/health-status")
+    def health_status():
+        try:
+            conn = _get_conn()
+            cur = conn.cursor(dictionary=True)
+
+            alerts = []
+
+            # Check: did the scraper run today?
+            cur.execute("""
+                SELECT COUNT(*) as cnt FROM scrape_log
+                WHERE run_date = CURDATE()
+            """)
+            today_runs = cur.fetchone()["cnt"]
+            if today_runs == 0:
+                alerts.append({
+                    "level": "danger",
+                    "title": "Daily scrape did NOT run today",
+                    "detail": "No scrape_log entries for today. Check Render cron job.",
+                })
+
+            # Check: did the scraper run yesterday?
+            cur.execute("""
+                SELECT COUNT(*) as cnt FROM scrape_log
+                WHERE run_date = CURDATE() - INTERVAL 1 DAY
+            """)
+            yesterday_runs = cur.fetchone()["cnt"]
+
+            # Check: any errors in the last 24h?
+            cur.execute("""
+                SELECT site_id, errors FROM scrape_log
+                WHERE errors IS NOT NULL AND errors != ''
+                  AND run_at >= NOW() - INTERVAL 24 HOUR
+                ORDER BY run_at DESC LIMIT 20
+            """)
+            recent_errors = cur.fetchall()
+            if recent_errors:
+                alerts.append({
+                    "level": "warning",
+                    "title": f"{len(recent_errors)} market(s) had errors in last 24h",
+                    "detail": "; ".join(f"{r['site_id']}: {r['errors'][:80]}" for r in recent_errors[:5]),
+                })
+
+            # Stats
+            cur.execute("SELECT COUNT(*) as cnt FROM obituaries WHERE is_deleted = 0")
+            total_obits = cur.fetchone()["cnt"]
+
+            cur.execute("SELECT COUNT(*) as cnt FROM obituaries WHERE is_deleted = 1")
+            deleted_obits = cur.fetchone()["cnt"]
+
+            cur.execute("SELECT COUNT(*) as cnt FROM obituaries WHERE death_city IS NOT NULL AND is_deleted = 0")
+            with_city = cur.fetchone()["cnt"]
+
+            cur.execute("SELECT COUNT(*) as cnt FROM obituaries WHERE photo_url IS NOT NULL AND is_deleted = 0")
+            with_photo = cur.fetchone()["cnt"]
+
+            cur.execute("SELECT COUNT(DISTINCT SUBSTRING(site_id, 1, 2)) as cnt FROM obituaries WHERE is_deleted = 0")
+            states = cur.fetchone()["cnt"]
+
+            cur.execute("SELECT COUNT(DISTINCT site_id) as cnt FROM obituaries WHERE is_deleted = 0")
+            markets = cur.fetchone()["cnt"]
+
+            # Last 7 days scrape summary
+            cur.execute("""
+                SELECT run_date, COUNT(*) as markets_scraped,
+                       SUM(obits_found) as total_found,
+                       SUM(obits_new) as total_new,
+                       SUM(CASE WHEN errors IS NOT NULL AND errors != '' THEN 1 ELSE 0 END) as error_count
+                FROM scrape_log
+                WHERE run_date >= CURDATE() - INTERVAL 7 DAY
+                GROUP BY run_date
+                ORDER BY run_date DESC
+            """)
+            daily_summary = cur.fetchall()
+
+            if not alerts and today_runs > 0:
+                alerts.append({
+                    "level": "success",
+                    "title": "All systems healthy",
+                    "detail": f"Daily scrape ran today ({today_runs} markets logged).",
+                })
+
+            cur.close()
+            conn.close()
+
+            return render_template(
+                "health.html",
+                alerts=alerts,
+                total_obits=total_obits,
+                deleted_obits=deleted_obits,
+                with_city=with_city,
+                with_photo=with_photo,
+                states=states,
+                markets=markets,
+                today_runs=today_runs,
+                yesterday_runs=yesterday_runs,
+                daily_summary=daily_summary,
+            )
+        except Exception as e:
+            logger.error("Health route error: %s", e)
+            return f"<h1>Database Error</h1><p>{e}</p>", 503
+
     return app

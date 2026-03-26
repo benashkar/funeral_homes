@@ -47,6 +47,13 @@
         .card-body-table table { margin: 0; border-radius: 0; box-shadow: none; }
         .btn-download { padding: 5px 12px; background: transparent; color: #ecf0f1; border: 1px solid #ecf0f1; border-radius: 4px; cursor: pointer; font-size: 13px; margin-left: 6px; }
         .btn-download:hover { background: rgba(255,255,255,0.1); }
+        .alert { padding: 15px 20px; border-radius: 8px; margin-bottom: 15px; }
+        .alert p { margin-top: 5px; font-size: 14px; }
+        .alert-danger { background: #f8d7da; color: #721c24; border: 1px solid #f5c6cb; }
+        .alert-warning { background: #fff3cd; color: #856404; border: 1px solid #ffeeba; }
+        .alert-success { background: #d4edda; color: #155724; border: 1px solid #c3e6cb; }
+        .badge-ok { background: #28a745; color: white; padding: 3px 10px; border-radius: 12px; font-size: 12px; }
+        .badge-warn { background: #ffc107; color: #333; padding: 3px 10px; border-radius: 12px; font-size: 12px; }
     </style>
 </head>
 <body>
@@ -54,6 +61,7 @@
         <a href="/">Obituaries</a>
         <a href="/stats">Scrape Stats</a>
         <a href="/schema">Schema</a>
+        <a href="/health-status">Health</a>
     </nav>
     <div class="container">
         {% block content %}{% endblock %}
