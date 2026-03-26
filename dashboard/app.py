@@ -1,5 +1,7 @@
 """CR Obituaries Dashboard — browse scraped obituary data."""
 
+from datetime import datetime, timezone, timedelta
+
 from flask import Flask, render_template, request
 import mysql.connector
 
@@ -7,6 +9,9 @@ from utils.aws_secrets import get_db_credentials
 from utils.logger import get_logger
 
 logger = get_logger(__name__)
+
+# Central Time offset (UTC-6 standard, UTC-5 daylight)
+CT = timezone(timedelta(hours=-5))  # CDT (March-November)
 
 PER_PAGE = 50
 
@@ -50,6 +55,17 @@ def _county_from_site_id(site_id):
 
 def create_app():
     app = Flask(__name__)
+
+    @app.template_filter("to_ct")
+    def to_ct_filter(dt):
+        """Convert a UTC datetime to Central Time string."""
+        if dt is None:
+            return ""
+        if isinstance(dt, datetime):
+            utc_dt = dt.replace(tzinfo=timezone.utc)
+            ct_dt = utc_dt.astimezone(CT)
+            return ct_dt.strftime("%Y-%m-%d %I:%M %p CT")
+        return str(dt)
 
     @app.route("/health")
     def health():
