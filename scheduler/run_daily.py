@@ -28,7 +28,8 @@ from utils.rate_limiter import create_session
 logger = get_logger("run_daily")
 
 # Cooldown between states (seconds) — gives Legacy.com's rate limiter time to reset
-STATE_COOLDOWN = int(os.environ.get("STATE_COOLDOWN", "30"))
+# 60s default, configurable via env var. Total overhead: ~50 states * 60s = ~50 min
+STATE_COOLDOWN = int(os.environ.get("STATE_COOLDOWN", "60"))
 
 MARKETS_PATH = os.path.join(
     os.path.dirname(os.path.dirname(os.path.abspath(__file__))),

@@ -15,8 +15,8 @@ from utils.logger import get_logger
 logger = get_logger(__name__)
 
 USER_AGENT = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/134.0.0.0 Safari/537.36"
-MIN_DELAY = 2.0   # seconds between ANY two requests (global)
-BACKOFF_DELAY = 90  # seconds to wait on 403/429/503 before retry
+MIN_DELAY = 3.0    # seconds between ANY two requests (global)
+BACKOFF_DELAY = 120  # seconds to wait on 403/429/503 before retry
 
 # Global rate limiter — ensures all threads share one delay
 _lock = threading.Lock()
