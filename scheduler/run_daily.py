@@ -31,6 +31,10 @@ logger = get_logger("run_daily")
 # 60s default, configurable via env var. Total overhead: ~50 states * 60s = ~50 min
 STATE_COOLDOWN = int(os.environ.get("STATE_COOLDOWN", "60"))
 
+# Optional: only scrape specific states (comma-separated 2-letter codes)
+# e.g. SCRAPE_STATES=mn,wi,il,ia,in  — if unset, scrapes all states
+SCRAPE_STATES = os.environ.get("SCRAPE_STATES", "")
+
 MARKETS_PATH = os.path.join(
     os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
     "config",
@@ -39,9 +43,19 @@ MARKETS_PATH = os.path.join(
 
 
 def load_markets():
-    """Load the markets list from config/markets.json."""
+    """Load the markets list from config/markets.json.
+
+    If SCRAPE_STATES env var is set, filters to only those states.
+    """
     with open(MARKETS_PATH, "r", encoding="utf-8") as f:
-        return json.load(f)
+        markets = json.load(f)
+
+    if SCRAPE_STATES:
+        allowed = {s.strip().lower() for s in SCRAPE_STATES.split(",")}
+        markets = [m for m in markets if m["site_id"].split("-")[0] in allowed]
+        logger.info("Filtered to %d markets for states: %s", len(markets), SCRAPE_STATES)
+
+    return markets
 
 
 def group_by_state(markets):
