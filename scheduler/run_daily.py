@@ -24,6 +24,7 @@ from scraper.legacy_scraper import LegacyScraper
 from scraper.db_writer import get_connection, batch_insert_obits, log_run, get_known_urls_for_site, flag_bad_and_dupes, upsert_funeral_home, ensure_schema
 from utils.logger import get_logger
 from utils.rate_limiter import create_session
+from utils.s3_uploader import upload_photo
 
 logger = get_logger("run_daily")
 
@@ -100,6 +101,17 @@ def scrape_market(market, session):
             else:
                 obit["funeral_home_id"] = None
         conn.commit()
+
+        # Upload photos to S3 (uses a temp ID based on URL hash before DB insert)
+        for obit in obits:
+            photo_url = obit.get("photo_url")
+            if photo_url:
+                # Use hash of legacy_url as temp ID since we don't have DB id yet
+                temp_id = abs(hash(obit["legacy_url"])) % 10**10
+                s3_url = upload_photo(session, photo_url, site_id, temp_id)
+                obit["s3_photo_url"] = s3_url
+            else:
+                obit["s3_photo_url"] = None
 
         new_count = batch_insert_obits(conn, obits, site_id)
         log_run(conn, site_id, found, new_count)

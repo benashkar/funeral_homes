@@ -60,6 +60,16 @@ def ensure_schema(conn):
             FOREIGN KEY (funeral_home_id) REFERENCES funeral_homes(id) ON DELETE SET NULL
         """)
         logger.info("[OK] Migration: added funeral_home_id column + FK")
+    # Add s3_photo_url column if missing
+    cursor.execute("""
+        SELECT COUNT(*) FROM information_schema.COLUMNS
+        WHERE TABLE_SCHEMA = DATABASE()
+          AND TABLE_NAME = 'obituaries'
+          AND COLUMN_NAME = 's3_photo_url'
+    """)
+    if cursor.fetchone()[0] == 0:
+        cursor.execute("ALTER TABLE obituaries ADD COLUMN s3_photo_url VARCHAR(500) DEFAULT NULL AFTER photo_url")
+        logger.info("[OK] Migration: added s3_photo_url column")
     conn.commit()
     cursor.close()
     _MIGRATION_RAN = True
@@ -70,11 +80,12 @@ def ensure_schema(conn):
 INSERT_OBIT_SQL = """
     INSERT IGNORE INTO obituaries
         (site_id, legacy_url, deceased_name, published_date, death_date,
-         death_city, death_state, funeral_home, funeral_home_id, photo_url, obit_text)
+         death_city, death_state, funeral_home, funeral_home_id,
+         photo_url, s3_photo_url, obit_text)
     VALUES
         (%(site_id)s, %(legacy_url)s, %(deceased_name)s, %(published_date)s,
          %(death_date)s, %(death_city)s, %(death_state)s, %(funeral_home)s,
-         %(funeral_home_id)s, %(photo_url)s, %(obit_text)s)
+         %(funeral_home_id)s, %(photo_url)s, %(s3_photo_url)s, %(obit_text)s)
 """
 
 UPSERT_FH_SQL = """
@@ -205,6 +216,7 @@ def batch_insert_obits(conn, obits, site_id):
             "funeral_home": obit.get("funeral_home"),
             "funeral_home_id": obit.get("funeral_home_id"),
             "photo_url": obit.get("photo_url"),
+            "s3_photo_url": obit.get("s3_photo_url"),
             "obit_text": obit.get("obit_text"),
         }
         cursor.execute(INSERT_OBIT_SQL, params)

@@ -5,8 +5,8 @@
     <a href="/" class="back-link">&laquo; Back to list</a>
 
     <div class="detail-header">
-        {% if obit.photo_url %}
-        <img src="{{ obit.photo_url }}" alt="{{ obit.deceased_name }}" class="detail-photo">
+        {% if obit.s3_photo_url or obit.photo_url %}
+        <img src="{{ obit.s3_photo_url or obit.photo_url }}" alt="{{ obit.deceased_name }}" class="detail-photo">
         {% endif %}
         <div class="detail-info">
             <h1>{{ obit.deceased_name or "Unknown" }}</h1>

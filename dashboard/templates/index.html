@@ -44,7 +44,7 @@
     <tbody>
         {% for o in obits %}
         <tr>
-            <td class="photo-cell">{% if o.photo_url %}<img src="{{ o.photo_url }}" alt="" loading="lazy">{% endif %}</td>
+            <td class="photo-cell">{% if o.s3_photo_url or o.photo_url %}<img src="{{ o.s3_photo_url or o.photo_url }}" alt="" loading="lazy">{% endif %}</td>
             <td><a href="/obit/{{ o.id }}">{{ o.deceased_name or "" }}</a></td>
             <td>{{ o.death_city or "" }}{% if o.death_state %}, {{ o.death_state }}{% endif %}</td>
             <td>{{ o.published_date or "" }}</td>
