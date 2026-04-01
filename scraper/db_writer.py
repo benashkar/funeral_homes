@@ -80,6 +80,19 @@ def ensure_schema(conn):
     if cursor.fetchone()[0] == 0:
         cursor.execute("ALTER TABLE obituaries ADD COLUMN s3_photo_url_16x9 VARCHAR(500) DEFAULT NULL AFTER s3_photo_url")
         logger.info("[OK] Migration: added s3_photo_url_16x9 column")
+    # Add granular address columns to funeral_homes if missing
+    cursor.execute("""
+        SELECT COUNT(*) FROM information_schema.COLUMNS
+        WHERE TABLE_SCHEMA = DATABASE()
+          AND TABLE_NAME = 'funeral_homes'
+          AND COLUMN_NAME = 'street_number'
+    """)
+    if cursor.fetchone()[0] == 0:
+        cursor.execute("ALTER TABLE funeral_homes ADD COLUMN street_number VARCHAR(20) DEFAULT NULL AFTER address")
+        cursor.execute("ALTER TABLE funeral_homes ADD COLUMN street_direction VARCHAR(5) DEFAULT NULL AFTER street_number")
+        cursor.execute("ALTER TABLE funeral_homes ADD COLUMN street_name VARCHAR(100) DEFAULT NULL AFTER street_direction")
+        cursor.execute("ALTER TABLE funeral_homes ADD COLUMN street_type VARCHAR(20) DEFAULT NULL AFTER street_name")
+        logger.info("[OK] Migration: added granular address columns to funeral_homes")
     conn.commit()
     cursor.close()
     _MIGRATION_RAN = True
@@ -111,6 +124,21 @@ UPSERT_FH_SQL = """
 
 LOOKUP_FH_ID_SQL = """
     SELECT id FROM funeral_homes WHERE legacy_fh_id = %s LIMIT 1
+"""
+
+# Check if a funeral home needs address enrichment
+FH_NEEDS_ADDRESS_SQL = """
+    SELECT id, legacy_url FROM funeral_homes
+    WHERE id = %s AND address IS NULL AND legacy_url IS NOT NULL
+"""
+
+UPDATE_FH_ADDRESS_SQL = """
+    UPDATE funeral_homes
+    SET address = %s, street_number = %s, street_direction = %s,
+        street_name = %s, street_type = %s,
+        city = COALESCE(%s, city), state = COALESCE(%s, state),
+        zip = %s, lat = %s, lon = %s
+    WHERE id = %s
 """
 
 INSERT_LOG_SQL = """
@@ -326,6 +354,57 @@ def upsert_funeral_home(conn, fh_data):
     row = cursor.fetchone()
     cursor.close()
     return row[0] if row else None
+
+
+def enrich_funeral_home(conn, fh_id, session):
+    """Fetch full address + lat/lon for a funeral home if missing.
+
+    Only makes an HTTP request if address IS NULL. Fetches the FH's
+    Legacy.com detail page and parses LocalBusiness/FuneralHome JSON-LD.
+
+    Args:
+        conn: MySQL connection.
+        fh_id: funeral_homes row ID.
+        session: requests.Session for HTTP requests.
+
+    Returns:
+        True if enriched, False if skipped or failed.
+    """
+    from scraper.obit_parser import parse_fh_detail_page, parse_street_address
+    from utils.rate_limiter import polite_get
+
+    cursor = conn.cursor(dictionary=True)
+    cursor.execute(FH_NEEDS_ADDRESS_SQL, (fh_id,))
+    row = cursor.fetchone()
+    cursor.close()
+
+    if not row:
+        return False  # already has address or no legacy_url
+
+    resp = polite_get(session, row["legacy_url"])
+    if not resp:
+        return False
+
+    data = parse_fh_detail_page(resp.text)
+    if not data.get("address") and not data.get("lat"):
+        return False
+
+    # Parse full address string into granular parts
+    parts = parse_street_address(data.get("address"))
+
+    cursor = conn.cursor()
+    cursor.execute(UPDATE_FH_ADDRESS_SQL, (
+        data["address"],
+        parts["street_number"], parts["street_direction"],
+        parts["street_name"], parts["street_type"],
+        data["city"], data["state"],
+        data["zip"], data["lat"], data["lon"],
+        fh_id,
+    ))
+    conn.commit()
+    cursor.close()
+    logger.info("[OK] Enriched FH #%d: %s", fh_id, data.get("address", "lat/lon only"))
+    return True
 
 
 def log_run(conn, site_id, found, new, errors=None):

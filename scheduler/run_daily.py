@@ -21,7 +21,7 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 load_dotenv()
 
 from scraper.legacy_scraper import LegacyScraper
-from scraper.db_writer import get_connection, batch_insert_obits, log_run, get_known_urls_for_site, flag_bad_and_dupes, upsert_funeral_home, ensure_schema
+from scraper.db_writer import get_connection, batch_insert_obits, log_run, get_known_urls_for_site, flag_bad_and_dupes, upsert_funeral_home, enrich_funeral_home, ensure_schema
 from utils.logger import get_logger
 from utils.rate_limiter import create_session
 from utils.s3_uploader import upload_photo
@@ -93,11 +93,16 @@ def scrape_market(market, session):
 
         conn = get_connection()
 
-        # Upsert funeral homes and attach IDs to obit dicts
+        # Upsert funeral homes, enrich addresses, and attach IDs to obit dicts
         for obit in obits:
             fh_detail = obit.pop("funeral_home_detail", None) or {}
             if fh_detail.get("legacy_fh_id"):
-                obit["funeral_home_id"] = upsert_funeral_home(conn, fh_detail)
+                fh_id = upsert_funeral_home(conn, fh_detail)
+                obit["funeral_home_id"] = fh_id
+                conn.commit()
+                # Fetch full address if this FH doesn't have one yet
+                if fh_id:
+                    enrich_funeral_home(conn, fh_id, session)
             else:
                 obit["funeral_home_id"] = None
         conn.commit()

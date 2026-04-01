@@ -289,3 +289,97 @@ def parse_death_place(soup):
             result["state"] = match.group(2).strip()
 
     return result
+
+
+_STREET_TYPES = (
+    "St", "Ave", "Blvd", "Dr", "Rd", "Ln", "Ct", "Pl", "Way", "Cir",
+    "Ter", "Pkwy", "Hwy", "Loop", "Trl", "Run", "Pass", "Pike", "Sq",
+    "Street", "Avenue", "Boulevard", "Drive", "Road", "Lane", "Court",
+    "Place", "Circle", "Terrace", "Parkway", "Highway", "Trail", "Square",
+)
+_STREET_TYPE_RE = re.compile(
+    r'^(\d+[-\w]*)\s+'           # street number (e.g. 123, 123-A)
+    r'([NSEW]{1,2}\b\.?\s+)?'    # optional direction (N, SW, etc.)
+    r'(.+?)\s+'                   # street name (greedy minimal)
+    r'(' + '|'.join(_STREET_TYPES) + r')\.?\s*$',
+    re.IGNORECASE,
+)
+
+
+def parse_street_address(address_str):
+    """Parse a US street address into granular components.
+
+    Args:
+        address_str: Full street address like "123 N Main St".
+
+    Returns:
+        dict with keys: street_number, street_direction, street_name, street_type.
+        All values may be None if parsing fails.
+    """
+    result = {"street_number": None, "street_direction": None, "street_name": None, "street_type": None}
+    if not address_str:
+        return result
+    match = _STREET_TYPE_RE.match(address_str.strip())
+    if match:
+        result["street_number"] = match.group(1)
+        direction = (match.group(2) or "").strip().rstrip(".")
+        result["street_direction"] = direction if direction else None
+        result["street_name"] = match.group(3).strip()
+        result["street_type"] = match.group(4).strip()
+    return result
+
+
+def parse_fh_detail_page(html):
+    """Extract address and coordinates from a Legacy.com funeral home page.
+
+    Legacy.com FH pages embed FuneralHome/LocalBusiness JSON-LD with
+    PostalAddress and GeoCoordinates.
+
+    Args:
+        html: Raw HTML string of the funeral home detail page.
+
+    Returns:
+        dict with keys: address, city, state, zip, lat, lon (all nullable).
+    """
+    from bs4 import BeautifulSoup as _BS
+    result = {"address": None, "city": None, "state": None, "zip": None, "lat": None, "lon": None}
+    soup = _BS(html, "lxml")
+
+    for script in soup.find_all("script", type="application/ld+json"):
+        try:
+            data = json.loads(script.string or "")
+        except (json.JSONDecodeError, TypeError):
+            continue
+        if not isinstance(data, dict):
+            continue
+        dtype = (data.get("@type") or "").lower()
+        if dtype not in ("funeralhome", "localbusiness", "organization"):
+            continue
+
+        addr = data.get("address") or {}
+        street = addr.get("streetAddress") or ""
+        city = addr.get("addressLocality") or ""
+        state = addr.get("addressRegion") or ""
+        zip_code = addr.get("postalCode") or ""
+
+        if street:
+            result["address"] = street.strip()
+        if city:
+            result["city"] = city.strip()
+        if state:
+            result["state"] = state.strip()
+        if zip_code:
+            result["zip"] = zip_code.strip()
+
+        geo = data.get("geo") or {}
+        lat = geo.get("latitude")
+        lon = geo.get("longitude")
+        if lat is not None and lon is not None:
+            try:
+                result["lat"] = float(lat)
+                result["lon"] = float(lon)
+            except (ValueError, TypeError):
+                pass
+        break
+
+    return result
