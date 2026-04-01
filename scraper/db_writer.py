@@ -13,15 +13,82 @@ from utils.logger import get_logger
 
 logger = get_logger(__name__)
 
+# --- Auto-migration: ensures funeral_homes table + FK exist (idempotent) ---
+
+_MIGRATION_RAN = False
+
+
+def ensure_schema(conn):
+    """Create funeral_homes table and obituaries FK if they don't exist.
+
+    Safe to call on every startup — all statements are idempotent.
+    """
+    global _MIGRATION_RAN
+    if _MIGRATION_RAN:
+        return
+    cursor = conn.cursor()
+    cursor.execute("""
+        CREATE TABLE IF NOT EXISTS funeral_homes (
+            id              INT AUTO_INCREMENT PRIMARY KEY,
+            legacy_fh_id    VARCHAR(20)   NOT NULL UNIQUE,
+            name            VARCHAR(255)  NOT NULL,
+            address         VARCHAR(500)  DEFAULT NULL,
+            city            VARCHAR(100)  DEFAULT NULL,
+            state           VARCHAR(50)   DEFAULT NULL,
+            zip             VARCHAR(10)   DEFAULT NULL,
+            lat             DECIMAL(10,7) DEFAULT NULL,
+            lon             DECIMAL(10,7) DEFAULT NULL,
+            legacy_url      VARCHAR(500)  DEFAULT NULL,
+            created_at      DATETIME      DEFAULT CURRENT_TIMESTAMP,
+            updated_at      DATETIME      DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+            INDEX idx_city_state (city, state),
+            INDEX idx_name (name)
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
+    """)
+    # Add funeral_home_id column if missing
+    cursor.execute("""
+        SELECT COUNT(*) FROM information_schema.COLUMNS
+        WHERE TABLE_SCHEMA = DATABASE()
+          AND TABLE_NAME = 'obituaries'
+          AND COLUMN_NAME = 'funeral_home_id'
+    """)
+    if cursor.fetchone()[0] == 0:
+        cursor.execute("ALTER TABLE obituaries ADD COLUMN funeral_home_id INT DEFAULT NULL AFTER funeral_home")
+        cursor.execute("ALTER TABLE obituaries ADD INDEX idx_funeral_home_id (funeral_home_id)")
+        cursor.execute("""
+            ALTER TABLE obituaries ADD CONSTRAINT fk_obit_funeral_home
+            FOREIGN KEY (funeral_home_id) REFERENCES funeral_homes(id) ON DELETE SET NULL
+        """)
+        logger.info("[OK] Migration: added funeral_home_id column + FK")
+    conn.commit()
+    cursor.close()
+    _MIGRATION_RAN = True
+    logger.info("[OK] Schema check complete")
+
+
 # SQL statements
 INSERT_OBIT_SQL = """
     INSERT IGNORE INTO obituaries
         (site_id, legacy_url, deceased_name, published_date, death_date,
-         death_city, death_state, funeral_home, photo_url, obit_text)
+         death_city, death_state, funeral_home, funeral_home_id, photo_url, obit_text)
     VALUES
         (%(site_id)s, %(legacy_url)s, %(deceased_name)s, %(published_date)s,
          %(death_date)s, %(death_city)s, %(death_state)s, %(funeral_home)s,
-         %(photo_url)s, %(obit_text)s)
+         %(funeral_home_id)s, %(photo_url)s, %(obit_text)s)
+"""
+
+UPSERT_FH_SQL = """
+    INSERT INTO funeral_homes (legacy_fh_id, name, city, state, legacy_url)
+    VALUES (%(legacy_fh_id)s, %(name)s, %(city)s, %(state)s, %(legacy_url)s)
+    ON DUPLICATE KEY UPDATE
+        name = VALUES(name),
+        city = COALESCE(VALUES(city), city),
+        state = COALESCE(VALUES(state), state),
+        legacy_url = COALESCE(VALUES(legacy_url), legacy_url)
+"""
+
+LOOKUP_FH_ID_SQL = """
+    SELECT id FROM funeral_homes WHERE legacy_fh_id = %s LIMIT 1
 """
 
 INSERT_LOG_SQL = """
@@ -136,6 +203,7 @@ def batch_insert_obits(conn, obits, site_id):
             "death_city": obit.get("death_city"),
             "death_state": obit.get("death_state"),
             "funeral_home": obit.get("funeral_home"),
+            "funeral_home_id": obit.get("funeral_home_id"),
             "photo_url": obit.get("photo_url"),
             "obit_text": obit.get("obit_text"),
         }
@@ -212,6 +280,28 @@ def flag_bad_and_dupes(conn):
         logger.info("[OK] Flagged %d bad names, %d duplicates as is_deleted", bad, duped)
 
     return bad, duped
+
+
+def upsert_funeral_home(conn, fh_data):
+    """Insert or update a funeral home record, return the row ID.
+
+    Uses INSERT ON DUPLICATE KEY UPDATE keyed on legacy_fh_id.
+
+    Args:
+        conn: MySQL connection.
+        fh_data: Dict with keys: legacy_fh_id, name, city, state, legacy_url.
+
+    Returns:
+        int row ID, or None if fh_data is missing required fields.
+    """
+    if not fh_data or not fh_data.get("legacy_fh_id"):
+        return None
+    cursor = conn.cursor()
+    cursor.execute(UPSERT_FH_SQL, fh_data)
+    cursor.execute(LOOKUP_FH_ID_SQL, (fh_data["legacy_fh_id"],))
+    row = cursor.fetchone()
+    cursor.close()
+    return row[0] if row else None
 
 
 def log_run(conn, site_id, found, new, errors=None):

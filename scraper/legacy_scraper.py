@@ -1,26 +1,38 @@
 """Main scraper for Legacy.com obituary listing and detail pages."""
 
 import json
+import re
 
 from bs4 import BeautifulSoup
 
 from scraper.url_builder import build_listing_url
-from scraper.obit_parser import parse_name, parse_dates, parse_funeral_home, parse_obit_text, parse_photo_url, parse_death_place
+from scraper.obit_parser import (
+    parse_name, parse_dates, parse_funeral_home, parse_funeral_home_detail,
+    parse_obit_text, parse_photo_url, parse_death_place,
+)
 from utils.logger import get_logger
 from utils.rate_limiter import create_session, polite_get
 
 logger = get_logger(__name__)
 
+# Matches Legacy.com obituary detail URLs — both standard and publication-scoped:
+#   /us/obituaries/name/john-smith-obituary
+#   /us/obituaries/claxtonenterprise/name/judy-anderson-obituary
+_LEGACY_OBIT_URL_RE = re.compile(r'/us/obituaries/(?:[^/]+/)?name/', re.IGNORECASE)
+
 # CSS selectors for the listing page — fallback if JSON-LD is missing.
 # Legacy.com listing pages use personalization-link anchors inside result cards.
 OBIT_CARD_LINK_SELECTOR = (
-    "a[href*='/us/obituaries/name/'],"           # standard obit detail links
-    "a.personalization-link,"                      # personalization-style links
-    "div[data-component='ObituaryCard'] a[href]"   # component-based cards
+    "a[href*='/us/obituaries/'][href*='/name/'],"  # standard + publication-scoped
+    "a.personalization-link,"                       # personalization-style links
+    "div[data-component='ObituaryCard'] a[href]"    # component-based cards
 )
 
 # Base domain for resolving relative URLs
 LEGACY_DOMAIN = "https://www.legacy.com"
+
+# Safety limit for listing page pagination
+MAX_LISTING_PAGES = 5
 
 
 class LegacyScraper:
@@ -43,6 +55,13 @@ class LegacyScraper:
         as an ItemList. We extract from there first, then fall back to CSS selectors
         for anchor tags.
 
+        Handles both standard and publication-scoped Legacy.com URLs:
+          - /us/obituaries/name/john-smith-obituary
+          - /us/obituaries/claxtonenterprise/name/judy-anderson-obituary
+
+        External funeral home URLs (e.g. moodysfuneralhome.com) are logged but
+        skipped — our parser relies on Legacy.com JSON-LD structure.
+
         Args:
             html: Raw HTML string of the listing page.
 
@@ -51,9 +70,9 @@ class LegacyScraper:
         """
         soup = BeautifulSoup(html, "lxml")
         urls = set()
+        external_count = 0
 
         # Primary: extract from JSON-LD structured data.
-        # Detail URLs require the ?id= param to resolve (422 without it).
         for script in soup.find_all("script", type="application/ld+json"):
             try:
                 data = json.loads(script.string or "")
@@ -64,12 +83,18 @@ class LegacyScraper:
                 continue
             for item in main_entity.get("itemListElement", []):
                 item_url = item.get("url") or ""
-                if "/us/obituaries/name/" in item_url.lower():
+                if _LEGACY_OBIT_URL_RE.search(item_url):
                     urls.add(item_url)
+                elif item_url.startswith("http"):
+                    external_count += 1
 
-        if urls:
-            logger.info("[%s] Extracted %d URLs from JSON-LD", self.site_id, len(urls))
-            return list(urls)
+        if urls or external_count:
+            logger.info(
+                "[%s] JSON-LD: %d Legacy URLs, %d external URLs (skipped)",
+                self.site_id, len(urls), external_count,
+            )
+            if urls:
+                return list(urls)
 
         # Fallback: CSS selectors on anchor tags
         links = soup.select(OBIT_CARD_LINK_SELECTOR)
@@ -79,7 +104,7 @@ class LegacyScraper:
                 continue
             if href.startswith("/"):
                 href = LEGACY_DOMAIN + href
-            if "/us/obituaries/name/" in href.lower():
+            if _LEGACY_OBIT_URL_RE.search(href):
                 urls.add(href.split("?")[0])
 
         return list(urls)
@@ -93,7 +118,7 @@ class LegacyScraper:
 
         Returns:
             Dict with keys: legacy_url, deceased_name, published_date,
-            death_date, funeral_home, obit_text.
+            death_date, funeral_home, funeral_home_detail, obit_text, etc.
         """
         soup = BeautifulSoup(html, "lxml")
         dates = parse_dates(soup)
@@ -107,12 +132,16 @@ class LegacyScraper:
             "death_city": place["city"],
             "death_state": place["state"],
             "funeral_home": parse_funeral_home(soup),
+            "funeral_home_detail": parse_funeral_home_detail(soup),
             "photo_url": parse_photo_url(soup),
             "obit_text": parse_obit_text(soup),
         }
 
     def scrape_today(self, known_urls=None):
         """Scrape today's obituaries for this market.
+
+        Fetches multiple listing pages (paginated via ?page=N) until no more
+        new URLs are found or MAX_LISTING_PAGES is reached.
 
         Args:
             known_urls: Optional set of URLs already in DB to skip fetching.
@@ -121,18 +150,36 @@ class LegacyScraper:
             List of obit dicts ready for db_writer.upsert_obit.
         """
         known_urls = known_urls or set()
+        all_obit_urls = []
 
-        logger.info("[%s] Fetching listing: %s", self.site_id, self.listing_url)
-        resp = polite_get(self.session, self.listing_url)
-        if not resp:
-            logger.error("[%s] Failed to fetch listing page", self.site_id)
-            return []
+        for page_num in range(1, MAX_LISTING_PAGES + 1):
+            page_url = self.listing_url if page_num == 1 else f"{self.listing_url}?page={page_num}"
+            logger.info("[%s] Fetching listing page %d: %s", self.site_id, page_num, page_url)
 
-        obit_urls = self._extract_obit_links(resp.text)
-        logger.info("[%s] Found %d obit links on listing page", self.site_id, len(obit_urls))
+            resp = polite_get(self.session, page_url)
+            if not resp:
+                logger.error("[%s] Failed to fetch listing page %d", self.site_id, page_num)
+                break
+
+            page_urls = self._extract_obit_links(resp.text)
+            if not page_urls:
+                logger.info("[%s] Page %d returned 0 Legacy URLs — stopping pagination", self.site_id, page_num)
+                break
+
+            all_obit_urls.extend(page_urls)
+
+            # If every URL on this page is already known, no point continuing
+            new_on_page = [u for u in page_urls if u not in known_urls]
+            if not new_on_page:
+                logger.info("[%s] Page %d had 0 new URLs — stopping pagination", self.site_id, page_num)
+                break
+
+        # Deduplicate across pages while preserving order
+        all_obit_urls = list(dict.fromkeys(all_obit_urls))
+        logger.info("[%s] Found %d total obit links across pages", self.site_id, len(all_obit_urls))
 
         # Filter out already-known URLs
-        new_urls = [u for u in obit_urls if u not in known_urls]
+        new_urls = [u for u in all_obit_urls if u not in known_urls]
         logger.info("[%s] %d new URLs to fetch", self.site_id, len(new_urls))
 
         results = []

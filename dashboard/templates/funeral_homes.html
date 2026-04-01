@@ -1,0 +1,65 @@
+{% extends "base.html" %}
+{% block title %}Funeral Homes — CR Obituaries{% endblock %}
+{% block content %}
+<h1>Funeral Homes</h1>
+<p class="total">{{ "{:,}".format(total) }} funeral homes</p>
+
+<form class="filters" method="get">
+    <input type="text" name="search" placeholder="Search funeral home name..." value="{{ search }}">
+    <select name="state" onchange="this.form.submit()">
+        <option value="">All states</option>
+        {% for s in states %}
+        <option value="{{ s }}" {% if s == state %}selected{% endif %}>{{ s }}</option>
+        {% endfor %}
+    </select>
+    <button type="submit">Filter</button>
+    {% if search or state %}<a href="/funeral-homes">Clear</a>{% endif %}
+</form>
+
+<table>
+    <thead>
+        <tr>
+            <th>Name</th>
+            <th>City</th>
+            <th>State</th>
+            <th>Address</th>
+            <th>Zip</th>
+            <th>Obits</th>
+            <th>Legacy</th>
+        </tr>
+    </thead>
+    <tbody>
+        {% for fh in funeral_homes %}
+        <tr>
+            <td><strong>{{ fh.name }}</strong></td>
+            <td>{{ fh.city or "" }}</td>
+            <td>{{ fh.state or "" }}</td>
+            <td class="truncate">{{ fh.address or "" }}</td>
+            <td>{{ fh.zip or "" }}</td>
+            <td>{{ fh.obit_count }}</td>
+            <td>{% if fh.legacy_url %}<a href="{{ fh.legacy_url }}" target="_blank">View</a>{% endif %}</td>
+        </tr>
+        {% endfor %}
+    </tbody>
+</table>
+
+{% if total_pages > 1 %}
+<div class="pagination">
+    {% if page > 1 %}
+    <a href="?page={{ page - 1 }}&search={{ search }}&state={{ state }}">&laquo; Prev</a>
+    {% endif %}
+    {% for p in pagination_pages %}
+        {% if p is none %}
+        <span>...</span>
+        {% elif p == page %}
+        <a class="active" href="?page={{ p }}&search={{ search }}&state={{ state }}">{{ p }}</a>
+        {% else %}
+        <a href="?page={{ p }}&search={{ search }}&state={{ state }}">{{ p }}</a>
+        {% endif %}
+    {% endfor %}
+    {% if page < total_pages %}
+    <a href="?page={{ page + 1 }}&search={{ search }}&state={{ state }}">Next &raquo;</a>
+    {% endif %}
+</div>
+{% endif %}
+{% endblock %}

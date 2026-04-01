@@ -53,8 +53,42 @@ def _county_from_site_id(site_id):
     return " ".join(p.capitalize() for p in parts) if parts else ""
 
 
+def _pagination_pages(current_page, total_pages, window=2):
+    """Compute a compact list of page numbers for pagination display.
+
+    Returns a list like [1, 2, 3, None, 8, 9, 10, None, 98, 99, 100]
+    where None represents an ellipsis gap.
+    """
+    pages = set()
+    # Always show first 3 and last 3
+    for p in range(1, min(4, total_pages + 1)):
+        pages.add(p)
+    for p in range(max(1, total_pages - 2), total_pages + 1):
+        pages.add(p)
+    # Window around current page
+    for p in range(max(1, current_page - window), min(total_pages, current_page + window) + 1):
+        pages.add(p)
+
+    sorted_pages = sorted(pages)
+    result = []
+    for i, p in enumerate(sorted_pages):
+        if i > 0 and p > sorted_pages[i - 1] + 1:
+            result.append(None)
+        result.append(p)
+    return result
+
+
 def create_app():
     app = Flask(__name__)
+
+    # Auto-migrate on startup (idempotent)
+    try:
+        from scraper.db_writer import ensure_schema as _ensure
+        conn = _get_conn()
+        _ensure(conn)
+        conn.close()
+    except Exception as e:
+        logger.warning("Auto-migration skipped: %s", e)
 
     @app.template_filter("to_ct")
     def to_ct_filter(dt):
@@ -158,12 +192,15 @@ def create_app():
             cur.close()
             conn.close()
 
+            pagination_pages = _pagination_pages(page, total_pages)
+
             return render_template(
                 "index.html",
                 obits=obits,
                 page=page,
                 total_pages=total_pages,
                 total=total,
+                pagination_pages=pagination_pages,
                 states=states_display,
                 counties=counties,
                 cities=cities,
@@ -174,6 +211,70 @@ def create_app():
             )
         except Exception as e:
             logger.error("Index route error: %s", e)
+            return f"<h1>Database Error</h1><p>{e}</p>", 503
+
+    @app.route("/funeral-homes")
+    def funeral_homes_list():
+        try:
+            page = request.args.get("page", 1, type=int)
+            search = request.args.get("search", "").strip()
+            state = request.args.get("state", "").strip()
+
+            conn = _get_conn()
+            cur = conn.cursor(dictionary=True)
+
+            where_clauses = []
+            params = []
+            if search:
+                where_clauses.append("fh.name LIKE %s")
+                params.append(f"%{search}%")
+            if state:
+                where_clauses.append("fh.state = %s")
+                params.append(state)
+
+            where = ""
+            if where_clauses:
+                where = "WHERE " + " AND ".join(where_clauses)
+
+            cur.execute(f"SELECT COUNT(*) as cnt FROM funeral_homes fh {where}", params)
+            total = cur.fetchone()["cnt"]
+            total_pages = max(1, (total + PER_PAGE - 1) // PER_PAGE)
+
+            offset = (page - 1) * PER_PAGE
+            cur.execute(
+                f"""SELECT fh.*, COUNT(o.id) as obit_count
+                    FROM funeral_homes fh
+                    LEFT JOIN obituaries o ON o.funeral_home_id = fh.id AND o.is_deleted = 0
+                    {where}
+                    GROUP BY fh.id
+                    ORDER BY obit_count DESC, fh.name
+                    LIMIT %s OFFSET %s""",
+                params + [PER_PAGE, offset],
+            )
+            fh_rows = cur.fetchall()
+
+            # Distinct states for filter
+            cur.execute("SELECT DISTINCT state FROM funeral_homes WHERE state IS NOT NULL ORDER BY state")
+            states = [r["state"] for r in cur.fetchall()]
+
+            cur.close()
+            conn.close()
+
+            pagination_pages = _pagination_pages(page, total_pages)
+
+            return render_template(
+                "funeral_homes.html",
+                funeral_homes=fh_rows,
+                page=page,
+                total_pages=total_pages,
+                total=total,
+                pagination_pages=pagination_pages,
+                states=states,
+                search=search,
+                state=state,
+            )
+        except Exception as e:
+            logger.error("Funeral homes route error: %s", e)
             return f"<h1>Database Error</h1><p>{e}</p>", 503
 
     @app.route("/obit/<int:obit_id>")
@@ -239,13 +340,13 @@ def create_app():
 
             # Get table schemas
             tables = {}
-            for table in ["obituaries", "scrape_log"]:
+            for table in ["obituaries", "scrape_log", "funeral_homes"]:
                 cur.execute(f"DESCRIBE {table}")
                 tables[table] = cur.fetchall()
 
             # Get index info
             indexes = {}
-            for table in ["obituaries", "scrape_log"]:
+            for table in ["obituaries", "scrape_log", "funeral_homes"]:
                 cur.execute(f"SHOW INDEX FROM {table}")
                 raw = cur.fetchall()
                 indexes[table] = [
@@ -255,7 +356,7 @@ def create_app():
 
             # Get row counts
             counts = {}
-            for table in ["obituaries", "scrape_log"]:
+            for table in ["obituaries", "scrape_log", "funeral_homes"]:
                 cur.execute(f"SELECT COUNT(*) as cnt FROM {table}")
                 counts[table] = cur.fetchone()["cnt"]
 
@@ -351,6 +452,30 @@ def create_app():
             """)
             daily_summary = cur.fetchall()
 
+            # Check: markets with no new data in 3+ days
+            cur.execute("""
+                SELECT sl.site_id,
+                       MAX(sl.run_date) as last_run,
+                       DATEDIFF(CURDATE(), MAX(sl.run_date)) as days_stale
+                FROM scrape_log sl
+                GROUP BY sl.site_id
+                HAVING days_stale >= 3
+                ORDER BY days_stale DESC
+                LIMIT 50
+            """)
+            stale_markets = cur.fetchall()
+            if stale_markets:
+                stale_list = "; ".join(
+                    f"{r['site_id']} ({r['days_stale']}d)"
+                    for r in stale_markets[:10]
+                )
+                more = f" (+{len(stale_markets) - 10} more)" if len(stale_markets) > 10 else ""
+                alerts.append({
+                    "level": "warning",
+                    "title": f"{len(stale_markets)} market(s) have no new data in 3+ days",
+                    "detail": stale_list + more,
+                })
+
             if not alerts and today_runs > 0:
                 alerts.append({
                     "level": "success",
@@ -373,6 +498,7 @@ def create_app():
                 today_runs=today_runs,
                 yesterday_runs=yesterday_runs,
                 daily_summary=daily_summary,
+                stale_markets=stale_markets,
             )
         except Exception as e:
             logger.error("Health route error: %s", e)

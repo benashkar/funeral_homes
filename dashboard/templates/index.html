@@ -62,13 +62,13 @@
     {% if page > 1 %}
     <a href="?page={{ page - 1 }}&search={{ search }}&state={{ state }}&site_id={{ site_id }}&city={{ city }}">&laquo; Prev</a>
     {% endif %}
-    {% for p in range(1, total_pages + 1) %}
-        {% if p == page %}
-        <a class="active" href="?page={{ p }}&search={{ search }}&state={{ state }}&site_id={{ site_id }}&city={{ city }}">{{ p }}</a>
-        {% elif p <= 3 or p >= total_pages - 2 or (p >= page - 2 and p <= page + 2) %}
-        <a href="?page={{ p }}&search={{ search }}&state={{ state }}&site_id={{ site_id }}&city={{ city }}">{{ p }}</a>
-        {% elif p == 4 or p == total_pages - 3 %}
+    {% for p in pagination_pages %}
+        {% if p is none %}
         <span>...</span>
+        {% elif p == page %}
+        <a class="active" href="?page={{ p }}&search={{ search }}&state={{ state }}&site_id={{ site_id }}&city={{ city }}">{{ p }}</a>
+        {% else %}
+        <a href="?page={{ p }}&search={{ search }}&state={{ state }}&site_id={{ site_id }}&city={{ city }}">{{ p }}</a>
         {% endif %}
     {% endfor %}
     {% if page < total_pages %}

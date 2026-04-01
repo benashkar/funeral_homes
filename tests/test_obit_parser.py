@@ -11,7 +11,7 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from datetime import date
 from bs4 import BeautifulSoup
 
-from scraper.obit_parser import parse_name, parse_dates, parse_funeral_home, parse_obit_text, parse_photo_url, parse_death_place
+from scraper.obit_parser import parse_name, parse_dates, parse_funeral_home, parse_funeral_home_detail, parse_obit_text, parse_photo_url, parse_death_place
 
 
 # --- Fixtures: realistic Legacy.com JSON-LD structured data ---
@@ -153,6 +153,36 @@ def test_parse_funeral_home_happy():
 def test_parse_funeral_home_missing():
     soup = BeautifulSoup(EMPTY_HTML, "lxml")
     assert parse_funeral_home(soup) is None
+
+
+# --- parse_funeral_home_detail tests ---
+
+def test_parse_funeral_home_detail_happy():
+    soup = BeautifulSoup(FULL_OBIT_HTML, "lxml")
+    fh = parse_funeral_home_detail(soup)
+    assert fh["legacy_fh_id"] == "fh-1234"
+    assert fh["name"] == "Greenfield Memorial Chapel"
+    assert fh["city"] == "Springfield"
+    assert fh["state"] == "Ohio"
+    assert "/fh-1234" in fh["legacy_url"]
+
+
+def test_parse_funeral_home_detail_missing():
+    soup = BeautifulSoup(EMPTY_HTML, "lxml")
+    fh = parse_funeral_home_detail(soup)
+    assert fh["legacy_fh_id"] is None
+    assert fh["name"] is None
+    assert fh["city"] is None
+    assert fh["state"] is None
+    assert fh["legacy_url"] is None
+
+
+def test_parse_funeral_home_detail_no_breadcrumb():
+    """When only NewsArticle exists (no BreadcrumbList), all fields are None."""
+    soup = BeautifulSoup(MINIMAL_OBIT_HTML, "lxml")
+    fh = parse_funeral_home_detail(soup)
+    assert fh["legacy_fh_id"] is None
+    assert fh["name"] is None
 
 
 # --- parse_obit_text tests ---

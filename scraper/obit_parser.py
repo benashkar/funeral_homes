@@ -122,6 +122,44 @@ def parse_dates(soup):
     return result
 
 
+_FH_URL_RE = re.compile(r'/funeral-homes/([^/]+)/([^/]+)/[^/]+/(fh-\d+)')
+
+
+def parse_funeral_home_detail(soup):
+    """Extract structured funeral home data from JSON-LD BreadcrumbList.
+
+    Parses the BreadcrumbList URL pattern:
+      /funeral-homes/{state}/{city}/{slug}/fh-{ID}
+
+    Returns:
+        dict with keys: legacy_fh_id, name, city, state, legacy_url.
+        All values are None if no FH data found.
+    """
+    result = {"legacy_fh_id": None, "name": None, "city": None, "state": None, "legacy_url": None}
+
+    for script in soup.find_all("script", type="application/ld+json"):
+        try:
+            data = json.loads(script.string or "")
+        except (json.JSONDecodeError, TypeError):
+            continue
+        if not isinstance(data, dict) or data.get("@type") != "BreadcrumbList":
+            continue
+        for item in data.get("itemListElement", []):
+            item_data = item.get("item", {})
+            item_id = item_data.get("@id") or ""
+            if "/funeral-homes/" in item_id and "/fh-" in item_id:
+                result["name"] = (item_data.get("name") or "").strip() or None
+                result["legacy_url"] = item_id
+                match = _FH_URL_RE.search(item_id)
+                if match:
+                    result["state"] = match.group(1).replace("-", " ").title()
+                    result["city"] = match.group(2).replace("-", " ").title()
+                    result["legacy_fh_id"] = match.group(3)
+                break
+
+    return result
+
+
 def parse_funeral_home(soup):
     """Extract the funeral home name from JSON-LD BreadcrumbList.
 

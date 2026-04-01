@@ -71,6 +71,34 @@
     </div>
 </div>
 
+{% if stale_markets %}
+<div class="card mb-4">
+    <div class="card-header" style="background:#e67e22; color:white; padding:12px 16px;">
+        <strong>Stale Markets (No Data in 3+ Days)</strong>
+    </div>
+    <div class="card-body-table">
+        <table>
+            <thead>
+                <tr>
+                    <th>Market</th>
+                    <th>Last Scrape</th>
+                    <th>Days Stale</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for m in stale_markets %}
+                <tr>
+                    <td>{{ m.site_id }}</td>
+                    <td>{{ m.last_run }}</td>
+                    <td>{{ m.days_stale }}</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endif %}
+
 <div class="card mb-4">
     <div class="card-header" style="background:#34495e; color:white; padding:12px 16px;">
         <strong>Cron Configuration</strong>
