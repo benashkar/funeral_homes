@@ -102,16 +102,21 @@ def scrape_market(market, session):
                 obit["funeral_home_id"] = None
         conn.commit()
 
-        # Upload photos to S3 (uses a temp ID based on URL hash before DB insert)
+        # Upload photos to S3 (original + 16:9 version)
         for obit in obits:
             photo_url = obit.get("photo_url")
             if photo_url:
-                # Use hash of legacy_url as temp ID since we don't have DB id yet
                 temp_id = abs(hash(obit["legacy_url"])) % 10**10
-                s3_url = upload_photo(session, photo_url, site_id, temp_id)
-                obit["s3_photo_url"] = s3_url
+                result = upload_photo(session, photo_url, site_id, temp_id)
+                if result:
+                    obit["s3_photo_url"] = result["original"]
+                    obit["s3_photo_url_16x9"] = result["16x9"]
+                else:
+                    obit["s3_photo_url"] = None
+                    obit["s3_photo_url_16x9"] = None
             else:
                 obit["s3_photo_url"] = None
+                obit["s3_photo_url_16x9"] = None
 
         new_count = batch_insert_obits(conn, obits, site_id)
         log_run(conn, site_id, found, new_count)
