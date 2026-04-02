@@ -15736,5 +15736,185 @@
     "state": "wyoming",
     "legacy_slug": "weston-county",
     "type": "county"
+  },
+  {
+    "site_id": "ak-aleutians-east",
+    "state": "alaska",
+    "legacy_slug": "aleutians-east-borough",
+    "type": "county"
+  },
+  {
+    "site_id": "ak-aleutians-west",
+    "state": "alaska",
+    "legacy_slug": "aleutians-west-census-area",
+    "type": "county"
+  },
+  {
+    "site_id": "ak-anchorage",
+    "state": "alaska",
+    "legacy_slug": "anchorage",
+    "type": "city"
+  },
+  {
+    "site_id": "ak-bethel",
+    "state": "alaska",
+    "legacy_slug": "bethel-census-area",
+    "type": "county"
+  },
+  {
+    "site_id": "ak-bristol-bay",
+    "state": "alaska",
+    "legacy_slug": "bristol-bay-borough",
+    "type": "county"
+  },
+  {
+    "site_id": "ak-chugach",
+    "state": "alaska",
+    "legacy_slug": "chugach-census-area",
+    "type": "county"
+  },
+  {
+    "site_id": "ak-copper-river",
+    "state": "alaska",
+    "legacy_slug": "copper-river-census-area",
+    "type": "county"
+  },
+  {
+    "site_id": "ak-denali",
+    "state": "alaska",
+    "legacy_slug": "denali-borough",
+    "type": "county"
+  },
+  {
+    "site_id": "ak-dillingham",
+    "state": "alaska",
+    "legacy_slug": "dillingham-census-area",
+    "type": "county"
+  },
+  {
+    "site_id": "ak-fairbanks-north-star",
+    "state": "alaska",
+    "legacy_slug": "fairbanks-north-star-borough",
+    "type": "county"
+  },
+  {
+    "site_id": "ak-haines",
+    "state": "alaska",
+    "legacy_slug": "haines-borough",
+    "type": "county"
+  },
+  {
+    "site_id": "ak-hoonah-angoon",
+    "state": "alaska",
+    "legacy_slug": "hoonah-angoon-census-area",
+    "type": "county"
+  },
+  {
+    "site_id": "ak-juneau",
+    "state": "alaska",
+    "legacy_slug": "juneau",
+    "type": "city"
+  },
+  {
+    "site_id": "ak-kenai-peninsula",
+    "state": "alaska",
+    "legacy_slug": "kenai-peninsula-borough",
+    "type": "county"
+  },
+  {
+    "site_id": "ak-ketchikan-gateway",
+    "state": "alaska",
+    "legacy_slug": "ketchikan-gateway-borough",
+    "type": "county"
+  },
+  {
+    "site_id": "ak-kodiak-island",
+    "state": "alaska",
+    "legacy_slug": "kodiak-island-borough",
+    "type": "county"
+  },
+  {
+    "site_id": "ak-kusilvak",
+    "state": "alaska",
+    "legacy_slug": "kusilvak-census-area",
+    "type": "county"
+  },
+  {
+    "site_id": "ak-lake-and-peninsula",
+    "state": "alaska",
+    "legacy_slug": "lake-and-peninsula-borough",
+    "type": "county"
+  },
+  {
+    "site_id": "ak-matanuska-susitna",
+    "state": "alaska",
+    "legacy_slug": "matanuska-susitna-borough",
+    "type": "county"
+  },
+  {
+    "site_id": "ak-nome",
+    "state": "alaska",
+    "legacy_slug": "nome-census-area",
+    "type": "county"
+  },
+  {
+    "site_id": "ak-north-slope",
+    "state": "alaska",
+    "legacy_slug": "north-slope-borough",
+    "type": "county"
+  },
+  {
+    "site_id": "ak-northwest-arctic",
+    "state": "alaska",
+    "legacy_slug": "northwest-arctic-borough",
+    "type": "county"
+  },
+  {
+    "site_id": "ak-petersburg",
+    "state": "alaska",
+    "legacy_slug": "petersburg-borough",
+    "type": "county"
+  },
+  {
+    "site_id": "ak-prince-of-wales-hyder",
+    "state": "alaska",
+    "legacy_slug": "prince-of-wales-hyder-census-area",
+    "type": "county"
+  },
+  {
+    "site_id": "ak-sitka",
+    "state": "alaska",
+    "legacy_slug": "sitka",
+    "type": "city"
+  },
+  {
+    "site_id": "ak-skagway",
+    "state": "alaska",
+    "legacy_slug": "skagway",
+    "type": "city"
+  },
+  {
+    "site_id": "ak-southeast-fairbanks",
+    "state": "alaska",
+    "legacy_slug": "southeast-fairbanks-census-area",
+    "type": "county"
+  },
+  {
+    "site_id": "ak-wrangell",
+    "state": "alaska",
+    "legacy_slug": "wrangell",
+    "type": "city"
+  },
+  {
+    "site_id": "ak-yakutat",
+    "state": "alaska",
+    "legacy_slug": "yakutat",
+    "type": "city"
+  },
+  {
+    "site_id": "ak-yukon-koyukuk",
+    "state": "alaska",
+    "legacy_slug": "yukon-koyukuk-census-area",
+    "type": "county"
   }
 ]
