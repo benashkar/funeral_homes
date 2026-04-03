@@ -11,7 +11,7 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from datetime import date
 from bs4 import BeautifulSoup
 
-from scraper.obit_parser import parse_name, parse_dates, parse_funeral_home, parse_funeral_home_detail, parse_obit_text, parse_photo_url, parse_death_place, parse_death_date_from_text
+from scraper.obit_parser import parse_name, parse_dates, parse_funeral_home, parse_funeral_home_detail, parse_obit_text, parse_photo_url, parse_death_place, parse_death_date_from_text, parse_funeral_home_from_text
 
 
 # --- Fixtures: realistic Legacy.com JSON-LD structured data ---
@@ -339,3 +339,69 @@ def test_death_date_cross_validate_fixture():
     dates = parse_dates(soup)
     text_death = parse_death_date_from_text(obit_text, dates["published"])
     assert text_death == dates["death"]
+
+
+# --- parse_funeral_home_from_text tests ---
+
+def test_fh_text_arrangements_by():
+    text = "John passed away on Feb 28, 2026. Arrangements by Smith Funeral Home of Springfield."
+    assert parse_funeral_home_from_text(text) == "Smith Funeral Home"
+
+
+def test_fh_text_entrusted_to():
+    text = "She was 81. Arrangements entrusted to Brown Funeral Chapel, Madison."
+    assert parse_funeral_home_from_text(text) == "Brown Funeral Chapel"
+
+
+def test_fh_text_in_care_of():
+    text = "In care of Williams Memorial Funeral Home."
+    assert parse_funeral_home_from_text(text) == "Williams Memorial Funeral Home"
+
+
+def test_fh_text_visitation_at():
+    text = "Visitation at Green Funeral Services on Saturday from 2-4 PM."
+    assert parse_funeral_home_from_text(text) == "Green Funeral Services"
+
+
+def test_fh_text_keyword_only():
+    """Keyword-only fallback when no context phrase."""
+    text = "Jackson Mortuary is in charge of arrangements."
+    assert parse_funeral_home_from_text(text) == "Jackson Mortuary"
+
+
+def test_fh_text_cremation_society():
+    text = "Services provided by Northwest Cremation Society."
+    assert parse_funeral_home_from_text(text) == "Northwest Cremation Society"
+
+
+def test_fh_text_multi_word_hyphenated():
+    text = "Arrangements under the direction of Jones-Smith Memorial Funeral Home."
+    assert parse_funeral_home_from_text(text) == "Jones-Smith Memorial Funeral Home"
+
+
+def test_fh_text_near_end():
+    """Funeral home mentioned past 500 chars (near end of long obituary)."""
+    text = ("He was a beloved father and grandfather. " * 20) + "Arrangements by Oak Hill Funeral Home."
+    assert parse_funeral_home_from_text(text) == "Oak Hill Funeral Home"
+
+
+def test_fh_text_memorial_contributions_skipped():
+    """Must NOT match funeral home in 'memorial contributions' context."""
+    text = "Memorial contributions may be sent to First Baptist Church. Arrangements by Smith Funeral Home."
+    assert parse_funeral_home_from_text(text) == "Smith Funeral Home"
+
+
+def test_fh_text_donations_skipped():
+    """Donations context should not trigger false match."""
+    text = "Donations may be made to Memorial Hospital Foundation. Services by Valley Mortuary."
+    assert parse_funeral_home_from_text(text) == "Valley Mortuary"
+
+
+def test_fh_text_no_match():
+    text = "A beloved member of the community has passed away."
+    assert parse_funeral_home_from_text(text) is None
+
+
+def test_fh_text_empty():
+    assert parse_funeral_home_from_text("") is None
+    assert parse_funeral_home_from_text(None) is None

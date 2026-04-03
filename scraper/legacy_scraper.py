@@ -9,7 +9,7 @@ from scraper.url_builder import build_listing_url
 from scraper.obit_parser import (
     parse_name, parse_dates, parse_funeral_home, parse_funeral_home_detail,
     parse_obit_text, parse_photo_url, parse_death_place,
-    parse_death_date_from_text,
+    parse_death_date_from_text, parse_funeral_home_from_text,
 )
 from utils.logger import get_logger
 from utils.rate_limiter import create_session, polite_get
@@ -124,13 +124,17 @@ class LegacyScraper:
         soup = BeautifulSoup(html, "lxml")
         dates = parse_dates(soup)
         place = parse_death_place(soup)
+        obit_text = parse_obit_text(soup)
 
         # Fallback: parse death date from text if JSON-LD has no deathDate
         death_date = dates["death"]
-        if not death_date:
-            obit_text = parse_obit_text(soup)
-            if obit_text:
-                death_date = parse_death_date_from_text(obit_text, dates["published"])
+        if not death_date and obit_text:
+            death_date = parse_death_date_from_text(obit_text, dates["published"])
+
+        # Fallback: parse funeral home from text if JSON-LD has no FH data
+        funeral_home = parse_funeral_home(soup)
+        if not funeral_home and obit_text:
+            funeral_home = parse_funeral_home_from_text(obit_text)
 
         return {
             "legacy_url": url,
@@ -139,10 +143,10 @@ class LegacyScraper:
             "death_date": death_date,
             "death_city": place["city"],
             "death_state": place["state"],
-            "funeral_home": parse_funeral_home(soup),
+            "funeral_home": funeral_home,
             "funeral_home_detail": parse_funeral_home_detail(soup),
             "photo_url": parse_photo_url(soup),
-            "obit_text": parse_obit_text(soup),
+            "obit_text": obit_text,
         }
 
     def scrape_today(self, known_urls=None):

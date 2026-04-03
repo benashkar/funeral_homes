@@ -587,3 +587,106 @@ def parse_death_date_from_text(obit_text, published_date=None):
             continue
 
     return None
+
+
+# --- Funeral home extraction from obituary text ---
+
+_FH_KEYWORDS = (
+    r"Funeral\s+Home",
+    r"Funeral\s+Chapel",
+    r"Funeral\s+Services?",
+    r"Mortuary",
+    r"Memorial\s+Chapel",
+    r"Memorial\s+Funeral",
+    r"Cremation\s+Society",
+    r"Crematory",
+    r"Cremation\s+Services?",
+)
+_FH_KEYWORD_ALT = "|".join(_FH_KEYWORDS)
+
+# Context phrase + keyword anchor (highest confidence)
+_FH_CONTEXT_RE = re.compile(
+    r'(?:arrangements?\s+(?:entrusted\s+to|(?:are\s+)?(?:by|under\s+the\s+direction\s+of|in\s+(?:the\s+)?care\s+of))|'
+    r'(?:services?\s+(?:entrusted\s+to|provided\s+by|will\s+be\s+(?:held\s+at|at)))|'
+    r'in\s+(?:the\s+)?care\s+of|'
+    r'under\s+the\s+direction\s+of|'
+    r'(?:visitation|viewing)\s+(?:will\s+be\s+)?at)'
+    r'\s+'
+    r'((?:[A-Za-z][A-Za-z\'\-]+\s+){0,5}'
+    r'(?:' + _FH_KEYWORD_ALT + r'))',
+    re.IGNORECASE,
+)
+
+# Keyword anchor alone — [1-5 Title-Case words] + keyword
+# No IGNORECASE: name words must start uppercase (proper nouns) to avoid
+# grabbing common words like "services by" as part of the name.
+_FH_KEYWORD_RE = re.compile(
+    r'((?:[A-Z][A-Za-z\'\-]+\s+){1,5}'
+    r'(?:' + _FH_KEYWORD_ALT + r'))',
+)
+
+# Exclusion: memorial contributions / donations context
+_FH_EXCLUSION_RE = re.compile(
+    r'(?:memorial\s+contributions?\s+(?:may\s+be\s+)?(?:sent|made|directed)|'
+    r'donations?\s+(?:may\s+be\s+)?(?:sent|made|directed)|'
+    r'in\s+lieu\s+of\s+flowers)',
+    re.IGNORECASE,
+)
+
+
+def _validate_fh_name(name):
+    """Check if a candidate funeral home name is plausible."""
+    if not name or len(name) < 5:
+        return False
+    words = name.split()
+    if len(words) < 2:
+        return False
+    return True
+
+
+def _clean_fh_name(name):
+    """Normalize whitespace and punctuation in a funeral home name."""
+    name = re.sub(r'\s+', ' ', name).strip()
+    name = name.rstrip('.,;:')
+    return name
+
+
+def parse_funeral_home_from_text(obit_text):
+    """Extract funeral home name from obituary body text.
+
+    Searches the FULL text (funeral home mentions are often near the end).
+    Uses a regex cascade:
+      1. Context phrase + keyword anchor (highest confidence)
+      2. Keyword anchor alone with name prefix
+
+    Args:
+        obit_text: Full obituary body text.
+
+    Returns:
+        str or None.
+    """
+    if not obit_text:
+        return None
+
+    # Priority 1: Context phrase + keyword
+    for m in _FH_CONTEXT_RE.finditer(obit_text):
+        candidate = m.group(1).strip()
+        # Check same sentence for exclusion (back to last period/newline)
+        sent_start = max(obit_text.rfind(".", 0, m.start()), obit_text.rfind("\n", 0, m.start())) + 1
+        preceding_sent = obit_text[sent_start:m.start()]
+        if _FH_EXCLUSION_RE.search(preceding_sent):
+            continue
+        if _validate_fh_name(candidate):
+            return _clean_fh_name(candidate)
+
+    # Priority 2: Keyword anchor alone
+    for m in _FH_KEYWORD_RE.finditer(obit_text):
+        candidate = m.group(1).strip()
+        sent_start = max(obit_text.rfind(".", 0, m.start()), obit_text.rfind("\n", 0, m.start())) + 1
+        preceding_sent = obit_text[sent_start:m.start()]
+        if _FH_EXCLUSION_RE.search(preceding_sent):
+            continue
+        if _validate_fh_name(candidate):
+            return _clean_fh_name(candidate)
+
+    return None
