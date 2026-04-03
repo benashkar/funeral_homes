@@ -141,6 +141,67 @@ def scrape_market(market, session):
         return (site_id, 0, 0, str(e))
 
 
+def _run_auto_backfill():
+    """Run text-based backfill for missing death dates and funeral homes.
+
+    Fast pass: regex on existing obit_text in DB, no HTTP requests.
+    Returns a short summary string, or None if nothing to fix.
+    """
+    from scraper.obit_parser import parse_death_date_from_text, parse_funeral_home_from_text
+
+    conn = get_connection()
+    cur = conn.cursor(dictionary=True)
+
+    # Find records missing death_date or funeral_home
+    cur.execute(
+        "SELECT id, obit_text, published_date, death_date, funeral_home "
+        "FROM obituaries "
+        "WHERE is_deleted = 0 AND obit_text IS NOT NULL "
+        "AND (death_date IS NULL OR funeral_home IS NULL) "
+        "ORDER BY id"
+    )
+    rows = cur.fetchall()
+    cur.close()
+
+    if not rows:
+        conn.close()
+        return None
+
+    death_fixed = 0
+    fh_fixed = 0
+    update_cur = conn.cursor()
+
+    for row in rows:
+        if row["death_date"] is None:
+            d = parse_death_date_from_text(row["obit_text"], row["published_date"])
+            if d:
+                update_cur.execute(
+                    "UPDATE obituaries SET death_date = %s WHERE id = %s",
+                    (d, row["id"]),
+                )
+                death_fixed += 1
+
+        if row["funeral_home"] is None:
+            fh = parse_funeral_home_from_text(row["obit_text"])
+            if fh:
+                update_cur.execute(
+                    "UPDATE obituaries SET funeral_home = %s WHERE id = %s",
+                    (fh, row["id"]),
+                )
+                fh_fixed += 1
+
+    conn.commit()
+    update_cur.close()
+    conn.close()
+
+    if death_fixed or fh_fixed:
+        summary = f"death_date={death_fixed}, funeral_home={fh_fixed}"
+        logger.info("[OK] Auto-backfill: %s", summary)
+        return summary
+
+    return None
+
+
 def run():
     """Main entry point: scrape all markets, state by state."""
     # Ensure funeral_homes table + FK exist before scraping
@@ -191,6 +252,10 @@ def run():
     bad, duped = flag_bad_and_dupes(conn)
     conn.close()
 
+    # Auto-backfill: parse missing death dates and funeral homes from text
+    # Fast text-only parsing (~30s), no HTTP requests
+    backfill_fixed = _run_auto_backfill()
+
     logger.info(
         "Run complete — markets=%d, found=%d, new=%d, errors=%d, flagged_bad=%d, flagged_dupes=%d",
         len(markets), total_found, total_new, errors, bad, duped,
@@ -205,6 +270,8 @@ def run():
         f"Markets: {len(markets)} | Found: {total_found} | New: {total_new}\n"
         f"Errors: {errors} | Bad: {bad} | Dupes: {duped}"
     )
+    if backfill_fixed:
+        msg += f"\nBackfill: {backfill_fixed}"
     telegram_send(msg)
 
 
