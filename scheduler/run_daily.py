@@ -25,6 +25,7 @@ from scraper.db_writer import get_connection, batch_insert_obits, log_run, get_k
 from utils.logger import get_logger
 from utils.rate_limiter import create_session
 from utils.s3_uploader import upload_photo
+from utils.telegram import send_message as telegram_send
 
 logger = get_logger("run_daily")
 
@@ -194,6 +195,17 @@ def run():
         "Run complete — markets=%d, found=%d, new=%d, errors=%d, flagged_bad=%d, flagged_dupes=%d",
         len(markets), total_found, total_new, errors, bad, duped,
     )
+
+    # Send Telegram summary
+    states_label = SCRAPE_STATES if SCRAPE_STATES else "ALL"
+    status = "OK" if errors == 0 else f"ERRORS: {errors}"
+    msg = (
+        f"<b>Obituary Scraper — {states_label}</b>\n"
+        f"Status: {status}\n"
+        f"Markets: {len(markets)} | Found: {total_found} | New: {total_new}\n"
+        f"Errors: {errors} | Bad: {bad} | Dupes: {duped}"
+    )
+    telegram_send(msg)
 
 
 if __name__ == "__main__":
