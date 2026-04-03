@@ -11,7 +11,7 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from datetime import date
 from bs4 import BeautifulSoup
 
-from scraper.obit_parser import parse_name, parse_dates, parse_funeral_home, parse_funeral_home_detail, parse_obit_text, parse_photo_url, parse_death_place
+from scraper.obit_parser import parse_name, parse_dates, parse_funeral_home, parse_funeral_home_detail, parse_obit_text, parse_photo_url, parse_death_place, parse_death_date_from_text
 
 
 # --- Fixtures: realistic Legacy.com JSON-LD structured data ---
@@ -250,3 +250,92 @@ def test_parse_death_place_og_title_fallback():
     place = parse_death_place(soup)
     assert place["city"] == "Madison"
     assert place["state"] == "WI"
+
+
+# --- parse_death_date_from_text tests ---
+
+def test_death_date_passed_away_on():
+    """Standard 'passed away on' phrasing."""
+    text = "John Michael Smith, 81, of Springfield, passed away peacefully on February 28, 2026. He is survived by..."
+    assert parse_death_date_from_text(text) == date(2026, 2, 28)
+
+
+def test_death_date_range_dash():
+    """Birth-death date range with dash."""
+    text = "Jane Doe (January 5, 1945 - February 28, 2026) Jane was born in Columbus..."
+    assert parse_death_date_from_text(text, date(2026, 3, 1)) == date(2026, 2, 28)
+
+
+def test_death_date_range_tilde():
+    """Birth-death date range with tilde."""
+    text = "Robert James Lee October 12, 1950 ~ March 3, 2026 Robert was a loving father..."
+    assert parse_death_date_from_text(text, date(2026, 3, 5)) == date(2026, 3, 3)
+
+
+def test_death_date_born_died():
+    """Explicit 'Born...died' phrasing."""
+    text = "Born March 1, 1940 in Columbus, she died on February 15, 2026 at the age of 85."
+    assert parse_death_date_from_text(text, date(2026, 2, 17)) == date(2026, 2, 15)
+
+
+def test_death_date_abbreviated_month():
+    """Abbreviated month name."""
+    text = "Mary Anne Wilson, 73, passed away on Feb. 28, 2026 at her home."
+    assert parse_death_date_from_text(text) == date(2026, 2, 28)
+
+
+def test_death_date_numeric_range():
+    """Numeric MM/DD/YYYY format in date range."""
+    text = "Thomas Ray Johnson (3/15/1948 - 2/28/2026) Thomas was a veteran..."
+    assert parse_death_date_from_text(text, date(2026, 3, 1)) == date(2026, 2, 28)
+
+
+def test_death_date_no_match():
+    """Text with no parseable death date."""
+    text = "A beloved member of the community has passed away."
+    assert parse_death_date_from_text(text) is None
+
+
+def test_death_date_empty_text():
+    """Empty or None text."""
+    assert parse_death_date_from_text("") is None
+    assert parse_death_date_from_text(None) is None
+
+
+def test_death_date_future_rejected():
+    """Future dates should be rejected."""
+    text = "John Smith passed away on December 31, 2099."
+    assert parse_death_date_from_text(text) is None
+
+
+def test_death_date_validation_published_bound():
+    """Death date near published_date is valid."""
+    text = "John Smith, born January 5, 1945, passed away on February 28, 2026."
+    assert parse_death_date_from_text(text, date(2026, 3, 1)) == date(2026, 2, 28)
+
+
+def test_death_date_birth_only_rejected():
+    """Only a birth date visible should return None when published_date filters it."""
+    text = "John Smith was born on January 5, 1945 in Columbus, Ohio. " + ("x " * 300)
+    assert parse_death_date_from_text(text, date(2026, 3, 1)) is None
+
+
+def test_death_date_departed_this_life():
+    """Alternative death phrasing."""
+    text = "Sarah Johnson departed this life on March 10, 2026, surrounded by family."
+    assert parse_death_date_from_text(text, date(2026, 3, 12)) == date(2026, 3, 10)
+
+
+def test_death_date_went_to_be_with_lord():
+    """Religious phrasing."""
+    text = "James Lee went to be with the Lord on March 5, 2026."
+    assert parse_death_date_from_text(text, date(2026, 3, 7)) == date(2026, 3, 5)
+
+
+def test_death_date_cross_validate_fixture():
+    """The text in the FULL_OBIT_HTML fixture should yield the same death date as JSON-LD."""
+    soup = BeautifulSoup(FULL_OBIT_HTML, "lxml")
+    obit_text = parse_obit_text(soup)
+    dates = parse_dates(soup)
+    text_death = parse_death_date_from_text(obit_text, dates["published"])
+    assert text_death == dates["death"]

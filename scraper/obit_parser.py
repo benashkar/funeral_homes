@@ -12,7 +12,7 @@ Missing fields return None, never raise.
 
 import json
 import re
-from datetime import datetime
+from datetime import date, datetime, timedelta
 
 from utils.logger import get_logger
 
@@ -383,3 +383,207 @@ def parse_fh_detail_page(html):
         break
 
     return result
+
+
+# --- Death date extraction from obituary text ---
+
+_MONTH_NAMES = {
+    "january": 1, "february": 2, "march": 3, "april": 4,
+    "may": 5, "june": 6, "july": 7, "august": 8,
+    "september": 9, "october": 10, "november": 11, "december": 12,
+    "jan": 1, "feb": 2, "mar": 3, "apr": 4,
+    "jun": 6, "jul": 7, "aug": 8, "sep": 9, "sept": 9,
+    "oct": 10, "nov": 11, "dec": 12,
+}
+_MONTH_ALT = "|".join(_MONTH_NAMES.keys())
+
+# "February 28, 2026" / "Feb. 28, 2026" / "February 28th, 2026"
+_DATE_WRITTEN_RE = re.compile(
+    r'(' + _MONTH_ALT + r')\.?\s+(\d{1,2})(?:st|nd|rd|th)?,?\s+(\d{4})',
+    re.IGNORECASE,
+)
+
+# "28 February 2026" (European order)
+_DATE_EURO_RE = re.compile(
+    r'(\d{1,2})(?:st|nd|rd|th)?\s+(' + _MONTH_ALT + r')\.?,?\s+(\d{4})',
+    re.IGNORECASE,
+)
+
+# "2/28/2026" or "02-28-2026"
+_DATE_NUMERIC_RE = re.compile(
+    r'(\d{1,2})[/\-](\d{1,2})[/\-](\d{4})'
+)
+
+# Two dates separated by dash or tilde (birth - death)
+_DATE_RANGE_RE = re.compile(
+    r'(?:'
+    # Written dates: "Month DD, YYYY - Month DD, YYYY"
+    r'(?:' + _MONTH_ALT + r')\.?\s+\d{1,2}(?:st|nd|rd|th)?,?\s+\d{4}'
+    r'|'
+    # Numeric dates: "MM/DD/YYYY"
+    r'\d{1,2}[/\-]\d{1,2}[/\-]\d{4}'
+    r')'
+    r'\s*[\-\u2013\u2014~]\s*'  # dash, en-dash, em-dash, or tilde
+    r'('
+    # Second date (captured) — written
+    r'(?:' + _MONTH_ALT + r')\.?\s+\d{1,2}(?:st|nd|rd|th)?,?\s+\d{4}'
+    r'|'
+    # Second date (captured) — numeric
+    r'\d{1,2}[/\-]\d{1,2}[/\-]\d{4}'
+    r')',
+    re.IGNORECASE,
+)
+
+# Death phrases followed by a written date
+_DEATH_PHRASE_RE = re.compile(
+    r'(?:passed\s+away|died|departed(?:\s+this\s+life)?|'
+    r'went\s+to\s+be\s+with\s+(?:the\s+)?(?:lord|god|his\s+lord|her\s+lord)|'
+    r'entered\s+(?:eternal|into\s+eternal)\s+rest|'
+    r'went\s+(?:home\s+)?to\s+(?:be\s+with\s+)?(?:the\s+)?lord|'
+    r'was\s+called\s+home)'
+    r'[^.]*?'  # optional words like "peacefully", "suddenly", "on"
+    r'(?:on\s+)?'
+    r'(' + _MONTH_ALT + r')\.?\s+(\d{1,2})(?:st|nd|rd|th)?,?\s+(\d{4})',
+    re.IGNORECASE,
+)
+
+# Death phrase with numeric date
+_DEATH_PHRASE_NUMERIC_RE = re.compile(
+    r'(?:passed\s+away|died|departed(?:\s+this\s+life)?|'
+    r'went\s+to\s+be\s+with\s+(?:the\s+)?(?:lord|god)|'
+    r'entered\s+(?:eternal|into\s+eternal)\s+rest|'
+    r'was\s+called\s+home)'
+    r'[^.]*?'
+    r'(?:on\s+)?'
+    r'(\d{1,2})[/\-](\d{1,2})[/\-](\d{4})',
+    re.IGNORECASE,
+)
+
+
+def _parse_date_str(date_str):
+    """Parse a date string into a datetime.date, or None.
+
+    Handles written ("February 28, 2026") and numeric ("2/28/2026") formats.
+    """
+    if not date_str:
+        return None
+
+    # Try written format: "Month DD, YYYY"
+    m = _DATE_WRITTEN_RE.search(date_str)
+    if m:
+        month = _MONTH_NAMES.get(m.group(1).lower().rstrip("."))
+        if month:
+            try:
+                return date(int(m.group(3)), month, int(m.group(2)))
+            except ValueError:
+                pass
+
+    # Try European format: "28 February 2026"
+    m = _DATE_EURO_RE.search(date_str)
+    if m:
+        month = _MONTH_NAMES.get(m.group(2).lower().rstrip("."))
+        if month:
+            try:
+                return date(int(m.group(3)), month, int(m.group(1)))
+            except ValueError:
+                pass
+
+    # Try numeric format: "2/28/2026"
+    m = _DATE_NUMERIC_RE.search(date_str)
+    if m:
+        try:
+            return date(int(m.group(3)), int(m.group(1)), int(m.group(2)))
+        except ValueError:
+            pass
+
+    return None
+
+
+def _validate_death_date(d, published_date=None):
+    """Check whether a parsed date is a plausible death date."""
+    if d is None:
+        return False
+    today = date.today()
+    if d > today:
+        return False
+    if d.year < 1900:
+        return False
+    if published_date:
+        # Death should be within 30 days before published, or at most 3 days after
+        if d > published_date + timedelta(days=3):
+            return False
+        if d < published_date - timedelta(days=30):
+            return False
+    return True
+
+
+def parse_death_date_from_text(obit_text, published_date=None):
+    """Extract death date from obituary text.
+
+    Searches the first 500 characters using a regex cascade:
+      1. Date range (birth - death): take the second date
+      2. Death phrase ("passed away on", "died on", etc.) + date
+      3. First plausible date in text (lowest confidence fallback)
+
+    Args:
+        obit_text: Full obituary body text.
+        published_date: Optional date for validation upper bound.
+
+    Returns:
+        datetime.date or None.
+    """
+    if not obit_text:
+        return None
+
+    snippet = obit_text[:500]
+
+    # Priority 1: Date range (birth - death) — take the second date
+    m = _DATE_RANGE_RE.search(snippet)
+    if m:
+        d = _parse_date_str(m.group(1))
+        if _validate_death_date(d, published_date):
+            return d
+
+    # Priority 2: Death phrase with written date
+    m = _DEATH_PHRASE_RE.search(snippet)
+    if m:
+        month = _MONTH_NAMES.get(m.group(1).lower().rstrip("."))
+        if month:
+            try:
+                d = date(int(m.group(3)), month, int(m.group(2)))
+                if _validate_death_date(d, published_date):
+                    return d
+            except ValueError:
+                pass
+
+    # Priority 2b: Death phrase with numeric date
+    m = _DEATH_PHRASE_NUMERIC_RE.search(snippet)
+    if m:
+        try:
+            d = date(int(m.group(3)), int(m.group(1)), int(m.group(2)))
+            if _validate_death_date(d, published_date):
+                return d
+        except ValueError:
+            pass
+
+    # Priority 3: First plausible written date in snippet
+    for m in _DATE_WRITTEN_RE.finditer(snippet):
+        month = _MONTH_NAMES.get(m.group(1).lower().rstrip("."))
+        if month:
+            try:
+                d = date(int(m.group(3)), month, int(m.group(2)))
+                if _validate_death_date(d, published_date):
+                    return d
+            except ValueError:
+                continue
+
+    # Priority 3b: First plausible numeric date in snippet
+    for m in _DATE_NUMERIC_RE.finditer(snippet):
+        try:
+            d = date(int(m.group(3)), int(m.group(1)), int(m.group(2)))
+            if _validate_death_date(d, published_date):
+                return d
+        except ValueError:
+            continue
+
+    return None

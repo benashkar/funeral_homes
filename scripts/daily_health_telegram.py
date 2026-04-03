@@ -93,6 +93,10 @@ def run():
     cur.execute("SELECT COUNT(*) as cnt FROM obituaries WHERE s3_photo_url IS NOT NULL AND is_deleted = 0")
     s3_photos = cur.fetchone()["cnt"]
 
+    # Missing death_date count
+    cur.execute("SELECT COUNT(*) as cnt FROM obituaries WHERE death_date IS NULL AND is_deleted = 0")
+    missing_death_date = cur.fetchone()["cnt"]
+
     cur.close()
     conn.close()
 
@@ -122,6 +126,7 @@ def run():
         f"  Obituaries: {total_obits:,}",
         f"  Funeral homes: {total_fh:,} ({fh_with_address:,} with address)",
         f"  S3 photos: {s3_photos:,}",
+        f"  Missing death_date: {missing_death_date:,}",
     ]
 
     if stale_count > 0:
