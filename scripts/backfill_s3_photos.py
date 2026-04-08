@@ -21,7 +21,9 @@ from utils.logger import get_logger
 
 logger = get_logger("backfill_s3_photos")
 
-UPDATE_SQL = "UPDATE obituaries SET s3_photo_url = %s WHERE id = %s"
+UPDATE_SQL = (
+    "UPDATE obituaries SET s3_photo_url = %s, s3_photo_url_16x9 = %s WHERE id = %s"
+)
 
 
 def run():
@@ -29,7 +31,8 @@ def run():
     cur = conn.cursor(dictionary=True)
     cur.execute(
         "SELECT id, site_id, photo_url FROM obituaries "
-        "WHERE photo_url IS NOT NULL AND s3_photo_url IS NULL "
+        "WHERE photo_url IS NOT NULL "
+        "AND (s3_photo_url IS NULL OR s3_photo_url_16x9 IS NULL) "
         "AND is_deleted = 0 ORDER BY id"
     )
     rows = cur.fetchall()
@@ -44,12 +47,12 @@ def run():
     failed = 0
 
     for i, row in enumerate(rows, 1):
-        s3_url = upload_photo(session, row["photo_url"], row["site_id"], row["id"])
+        result = upload_photo(session, row["photo_url"], row["site_id"], row["id"])
 
-        if s3_url:
+        if result:
             conn = get_connection()
             cur = conn.cursor()
-            cur.execute(UPDATE_SQL, (s3_url, row["id"]))
+            cur.execute(UPDATE_SQL, (result["original"], result["16x9"], row["id"]))
             conn.commit()
             cur.close()
             conn.close()

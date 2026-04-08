@@ -183,7 +183,8 @@
     "site_id": "ga-claxton",
     "state": "georgia",
     "legacy_slug": "claxton",
-    "type": "city"
+    "type": "city",
+    "publication_slug": "claxtonenterprise"
   },
   {
     "site_id": "mn-aitkin",
