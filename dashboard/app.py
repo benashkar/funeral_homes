@@ -1,8 +1,10 @@
 """CR Obituaries Dashboard — browse scraped obituary data."""
 
+import json
+import os
 from datetime import datetime, timezone, timedelta
 
-from flask import Flask, render_template, request
+from flask import Flask, jsonify, render_template, request
 import mysql.connector
 
 from utils.aws_secrets import get_db_credentials
@@ -376,6 +378,91 @@ def create_app():
     @app.route("/erd")
     def erd():
         return app.send_static_file("erd.html")
+
+    @app.route("/health-cherry-road")
+    def health_cherry_road():
+        """Per-city health for Cherry Road customer markets.
+
+        Status: green (data within 48h), yellow (3-5 days), red (>5 days or never).
+        """
+        manifest_path = os.path.join(
+            os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
+            "config", "cherry_road_markets.json",
+        )
+        try:
+            with open(manifest_path, encoding="utf-8") as f:
+                cr_cities = json.load(f)
+        except FileNotFoundError:
+            return jsonify({"error": "cherry_road_markets.json not found"}), 500
+
+        try:
+            conn = _get_conn()
+            cur = conn.cursor(dictionary=True)
+
+            results = []
+            counts = {"green": 0, "yellow": 0, "red": 0}
+
+            for entry in cr_cities:
+                city = entry["city"]
+                state = entry["state"]
+                site_id = entry["site_id"]
+                newspaper = entry["newspaper"]
+
+                cur.execute(
+                    "SELECT MAX(scraped_at) as last_scraped, MAX(published_date) as last_pub, "
+                    "COUNT(*) as total, "
+                    "SUM(CASE WHEN scraped_at >= NOW() - INTERVAL 7 DAY THEN 1 ELSE 0 END) as last_7d "
+                    "FROM obituaries "
+                    "WHERE LOWER(death_city) = LOWER(%s) AND LOWER(death_state) = LOWER(%s) "
+                    "AND is_deleted = 0",
+                    (city, state),
+                )
+                row = cur.fetchone()
+                last_scraped = row["last_scraped"]
+                days_stale = None
+                if last_scraped:
+                    days_stale = (datetime.now() - last_scraped).days
+
+                if days_stale is None:
+                    status = "red"
+                elif days_stale <= 2:
+                    status = "green"
+                elif days_stale <= 5:
+                    status = "yellow"
+                else:
+                    status = "red"
+
+                counts[status] += 1
+                results.append({
+                    "newspaper": newspaper,
+                    "city": city,
+                    "state": state,
+                    "site_id": site_id,
+                    "total_obits": int(row["total"] or 0),
+                    "obits_last_7d": int(row["last_7d"] or 0),
+                    "last_scraped": last_scraped.isoformat() if last_scraped else None,
+                    "last_published": row["last_pub"].isoformat() if row["last_pub"] else None,
+                    "days_stale": days_stale,
+                    "status": status,
+                })
+
+            cur.close()
+            conn.close()
+
+            results.sort(key=lambda r: ({"red": 0, "yellow": 1, "green": 2}[r["status"]], r["state"], r["city"]))
+
+            return jsonify({
+                "summary": {
+                    "total_cities": len(results),
+                    "green": counts["green"],
+                    "yellow": counts["yellow"],
+                    "red": counts["red"],
+                },
+                "cities": results,
+            })
+        except Exception as e:
+            logger.error("Cherry Road health error: %s", e)
+            return jsonify({"error": str(e)}), 503
 
     @app.route("/health-status")
     def health_status():

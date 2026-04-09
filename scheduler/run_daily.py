@@ -229,6 +229,10 @@ def run():
         state_new = 0
         state_errors = 0
 
+        # Sort priority markets first so Cherry Road counties are scraped
+        # before any rate-limit accumulation hits later in the run.
+        state_markets = sorted(state_markets, key=lambda m: not m.get("priority", False))
+
         for market in state_markets:
             site_id, found, new, error = scrape_market(market, session)
             state_found += found

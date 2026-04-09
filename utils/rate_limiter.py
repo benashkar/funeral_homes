@@ -1,10 +1,11 @@
 """Polite rate limiting and HTTP session for Legacy.com scraping.
 
 Thread-safe: uses a global lock so concurrent workers share one rate limit.
-Treats 403 as rate limiting (Legacy.com's response to too many requests)
-and backs off with exponential retry.
+Treats 403/429/503 as rate limiting (Legacy.com's response to too many
+requests) and retries with exponential backoff up to MAX_RETRIES times.
 """
 
+import random
 import threading
 import time
 
@@ -14,9 +15,20 @@ from utils.logger import get_logger
 
 logger = get_logger(__name__)
 
-USER_AGENT = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/134.0.0.0 Safari/537.36"
-MIN_DELAY = 3.0    # seconds between ANY two requests (global)
-BACKOFF_DELAY = 120  # seconds to wait on 403/429/503 before retry
+# Rotating User-Agents to look less like a bot
+USER_AGENTS = [
+    "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/134.0.0.0 Safari/537.36",
+    "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.5 Safari/605.1.15",
+    "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:128.0) Gecko/20100101 Firefox/128.0",
+    "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/133.0.0.0 Safari/537.36",
+]
+USER_AGENT = USER_AGENTS[0]  # Default for create_session
+
+# Aggressive politeness settings — Legacy.com rate-limits Render IPs hard.
+# Original 3s/120s/1-retry config caused 84% of listing fetches to fail.
+MIN_DELAY = 6.0       # seconds between ANY two requests (global)
+MAX_RETRIES = 4       # total attempts including first try
+INITIAL_BACKOFF = 60  # seconds to wait on first 403/429/503
 
 # Global rate limiter — ensures all threads share one delay
 _lock = threading.Lock()
@@ -26,12 +38,17 @@ _consecutive_blocks = 0
 
 
 def _rate_limit():
-    """Block until MIN_DELAY has elapsed since the last request."""
+    """Block until MIN_DELAY has elapsed since the last request.
+
+    Adds dynamic extra delay if we've been getting blocked recently.
+    """
     global _last_request_time, _consecutive_blocks
     with _lock:
         now = time.monotonic()
-        # Add extra delay if we've been getting blocked
-        delay = MIN_DELAY + (_consecutive_blocks * 2)
+        # Add extra delay proportional to recent blocks (up to ~30s extra)
+        delay = MIN_DELAY + min(_consecutive_blocks * 3, 30)
+        # Add small random jitter to avoid thundering-herd patterns
+        delay += random.uniform(0, 1.0)
         elapsed = now - _last_request_time
         if elapsed < delay:
             time.sleep(delay - elapsed)
@@ -46,11 +63,11 @@ def _record_success():
 
 
 def _record_block():
-    """Increment block counter and return backoff time."""
+    """Increment block counter and return current count."""
     global _consecutive_blocks
     with _lock:
         _consecutive_blocks = min(_consecutive_blocks + 1, 10)
-        return BACKOFF_DELAY + (_consecutive_blocks * 30)
+        return _consecutive_blocks
 
 
 def create_session():
@@ -60,6 +77,9 @@ def create_session():
         "User-Agent": USER_AGENT,
         "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
         "Accept-Language": "en-US,en;q=0.9",
+        "Accept-Encoding": "gzip, deflate, br",
+        "Connection": "keep-alive",
+        "Upgrade-Insecure-Requests": "1",
     })
     return session
 
@@ -67,7 +87,8 @@ def create_session():
 def polite_get(session, url):
     """GET a URL with global rate limiting and retry on rate-limit responses.
 
-    Retries on 403, 429, and 503 with exponential backoff.
+    Retries up to MAX_RETRIES times on 403/429/503 with exponential backoff.
+    Rotates User-Agent on each retry to evade fingerprint-based blocks.
 
     Args:
         session: requests.Session with headers configured.
@@ -76,34 +97,45 @@ def polite_get(session, url):
     Returns:
         requests.Response on success, None on failure.
     """
-    _rate_limit()
-
-    try:
-        resp = session.get(url, timeout=30)
-    except requests.RequestException as e:
-        logger.error("Request failed for %s: %s", url, e)
-        return None
-
-    if resp.status_code in (403, 429, 503):
-        backoff = _record_block()
-        logger.warning(
-            "Got %d for %s — backing off %ds before retry",
-            resp.status_code, url, backoff,
-        )
-        time.sleep(backoff)
+    for attempt in range(1, MAX_RETRIES + 1):
         _rate_limit()
+
+        # Rotate User-Agent on retries
+        if attempt > 1:
+            session.headers["User-Agent"] = random.choice(USER_AGENTS)
+
         try:
             resp = session.get(url, timeout=30)
         except requests.RequestException as e:
-            logger.error("Retry failed for %s: %s", url, e)
+            logger.error("Request failed (attempt %d) for %s: %s", attempt, url, e)
+            if attempt < MAX_RETRIES:
+                time.sleep(INITIAL_BACKOFF * (2 ** (attempt - 1)))
+                continue
             return None
+
         if resp.status_code in (403, 429, 503):
-            logger.warning("Still blocked (%d) after retry for %s", resp.status_code, url)
+            blocks = _record_block()
+            if attempt >= MAX_RETRIES:
+                logger.warning(
+                    "Still blocked (%d) after %d attempts for %s",
+                    resp.status_code, attempt, url,
+                )
+                return None
+            # Exponential backoff: 60s, 120s, 240s, 480s
+            backoff = INITIAL_BACKOFF * (2 ** (attempt - 1))
+            backoff += random.uniform(0, 10)  # jitter
+            logger.warning(
+                "Got %d for %s (attempt %d/%d, blocks=%d) — backing off %.0fs",
+                resp.status_code, url, attempt, MAX_RETRIES, blocks, backoff,
+            )
+            time.sleep(backoff)
+            continue
+
+        if resp.status_code != 200:
+            logger.warning("Non-200 status %d for %s", resp.status_code, url)
             return None
 
-    if resp.status_code != 200:
-        logger.warning("Non-200 status %d for %s", resp.status_code, url)
-        return None
+        _record_success()
+        return resp
 
-    _record_success()
-    return resp
+    return None

@@ -3,49 +3,57 @@
     "site_id": "tx-brown",
     "state": "texas",
     "legacy_slug": "brown-county",
-    "type": "county"
+    "type": "county",
+    "priority": true
   },
   {
     "site_id": "tx-erath",
     "state": "texas",
     "legacy_slug": "erath-county",
-    "type": "county"
+    "type": "county",
+    "priority": true
   },
   {
     "site_id": "tx-palo-pinto",
     "state": "texas",
     "legacy_slug": "palo-pinto-county",
-    "type": "county"
+    "type": "county",
+    "priority": true
   },
   {
     "site_id": "tx-somervell",
     "state": "texas",
     "legacy_slug": "somervell-county",
-    "type": "county"
+    "type": "county",
+    "priority": true
   },
   {
     "site_id": "tx-runnels",
     "state": "texas",
     "legacy_slug": "runnels-county",
-    "type": "county"
+    "type": "county",
+    "priority": true
   },
   {
     "site_id": "tx-ellis",
     "state": "texas",
     "legacy_slug": "ellis-county",
-    "type": "county"
+    "type": "county",
+    "priority": true
   },
   {
     "site_id": "tx-jim-wells",
     "state": "texas",
     "legacy_slug": "jim-wells-county",
-    "type": "county"
+    "type": "county",
+    "priority": true
   },
   {
     "site_id": "tx-grayson",
     "state": "texas",
     "legacy_slug": "grayson-county",
-    "type": "county"
+    "type": "county",
+    "priority": true
   },
   {
     "site_id": "tx-fannin",
@@ -99,7 +107,8 @@
     "site_id": "oh-madison-twp",
     "state": "ohio",
     "legacy_slug": "madison-township",
-    "type": "city"
+    "type": "city",
+    "priority": true
   },
   {
     "site_id": "oh-west-columbus",
@@ -141,7 +150,8 @@
     "site_id": "oh-grove-city",
     "state": "ohio",
     "legacy_slug": "grove-city",
-    "type": "city"
+    "type": "city",
+    "priority": true
   },
   {
     "site_id": "oh-urbancrest",
@@ -159,13 +169,15 @@
     "site_id": "ma-grafton",
     "state": "massachusetts",
     "legacy_slug": "grafton",
-    "type": "city"
+    "type": "city",
+    "priority": true
   },
   {
     "site_id": "ma-millbury",
     "state": "massachusetts",
     "legacy_slug": "millbury",
-    "type": "city"
+    "type": "city",
+    "priority": true
   },
   {
     "site_id": "ma-sutton",
@@ -177,14 +189,16 @@
     "site_id": "ma-holden",
     "state": "massachusetts",
     "legacy_slug": "holden",
-    "type": "city"
+    "type": "city",
+    "priority": true
   },
   {
     "site_id": "ga-claxton",
     "state": "georgia",
     "legacy_slug": "claxton",
     "type": "city",
-    "publication_slug": "claxtonenterprise"
+    "publication_slug": "claxtonenterprise",
+    "priority": true
   },
   {
     "site_id": "mn-aitkin",
@@ -232,7 +246,8 @@
     "site_id": "mn-brown",
     "state": "minnesota",
     "legacy_slug": "brown-county",
-    "type": "county"
+    "type": "county",
+    "priority": true
   },
   {
     "site_id": "mn-carlton",
@@ -256,7 +271,8 @@
     "site_id": "mn-chippewa",
     "state": "minnesota",
     "legacy_slug": "chippewa-county",
-    "type": "county"
+    "type": "county",
+    "priority": true
   },
   {
     "site_id": "mn-chisago",
@@ -280,7 +296,8 @@
     "site_id": "mn-cook",
     "state": "minnesota",
     "legacy_slug": "cook-county",
-    "type": "county"
+    "type": "county",
+    "priority": true
   },
   {
     "site_id": "mn-cottonwood",
@@ -400,7 +417,8 @@
     "site_id": "mn-koochiching",
     "state": "minnesota",
     "legacy_slug": "koochiching-county",
-    "type": "county"
+    "type": "county",
+    "priority": true
   },
   {
     "site_id": "mn-lac-qui-parle",
@@ -412,7 +430,8 @@
     "site_id": "mn-lake",
     "state": "minnesota",
     "legacy_slug": "lake-county",
-    "type": "county"
+    "type": "county",
+    "priority": true
   },
   {
     "site_id": "mn-lake-of-the-woods",
@@ -466,7 +485,8 @@
     "site_id": "mn-meeker",
     "state": "minnesota",
     "legacy_slug": "meeker-county",
-    "type": "county"
+    "type": "county",
+    "priority": true
   },
   {
     "site_id": "mn-mille-lacs",
@@ -568,7 +588,8 @@
     "site_id": "mn-redwood",
     "state": "minnesota",
     "legacy_slug": "redwood-county",
-    "type": "county"
+    "type": "county",
+    "priority": true
   },
   {
     "site_id": "mn-renville",
@@ -598,7 +619,8 @@
     "site_id": "mn-st-louis",
     "state": "minnesota",
     "legacy_slug": "st-louis-county",
-    "type": "county"
+    "type": "county",
+    "priority": true
   },
   {
     "site_id": "mn-scott",
@@ -622,7 +644,8 @@
     "site_id": "mn-stearns",
     "state": "minnesota",
     "legacy_slug": "stearns-county",
-    "type": "county"
+    "type": "county",
+    "priority": true
   },
   {
     "site_id": "mn-steele",
@@ -682,7 +705,8 @@
     "site_id": "mn-watonwan",
     "state": "minnesota",
     "legacy_slug": "watonwan-county",
-    "type": "county"
+    "type": "county",
+    "priority": true
   },
   {
     "site_id": "mn-wilkin",
@@ -1192,7 +1216,8 @@
     "site_id": "il-cass",
     "state": "illinois",
     "legacy_slug": "cass-county",
-    "type": "county"
+    "type": "county",
+    "priority": true
   },
   {
     "site_id": "il-champaign",
@@ -1768,7 +1793,8 @@
     "site_id": "al-barbour",
     "state": "alabama",
     "legacy_slug": "barbour-county",
-    "type": "county"
+    "type": "county",
+    "priority": true
   },
   {
     "site_id": "al-bibb",
@@ -2308,7 +2334,8 @@
     "site_id": "ar-clay",
     "state": "arkansas",
     "legacy_slug": "clay-county",
-    "type": "county"
+    "type": "county",
+    "priority": true
   },
   {
     "site_id": "ar-cleburne",
@@ -2392,7 +2419,8 @@
     "site_id": "ar-fulton",
     "state": "arkansas",
     "legacy_slug": "fulton-county",
-    "type": "county"
+    "type": "county",
+    "priority": true
   },
   {
     "site_id": "ar-garland",
@@ -2608,7 +2636,8 @@
     "site_id": "ar-randolph",
     "state": "arkansas",
     "legacy_slug": "randolph-county",
-    "type": "county"
+    "type": "county",
+    "priority": true
   },
   {
     "site_id": "ar-saline",
@@ -2626,7 +2655,8 @@
     "site_id": "ar-searcy",
     "state": "arkansas",
     "legacy_slug": "searcy-county",
-    "type": "county"
+    "type": "county",
+    "priority": true
   },
   {
     "site_id": "ar-sebastian",
@@ -3076,7 +3106,8 @@
     "site_id": "co-bent",
     "state": "colorado",
     "legacy_slug": "bent-county",
-    "type": "county"
+    "type": "county",
+    "priority": true
   },
   {
     "site_id": "co-boulder",
@@ -3262,7 +3293,8 @@
     "site_id": "co-las-animas",
     "state": "colorado",
     "legacy_slug": "las-animas-county",
-    "type": "county"
+    "type": "county",
+    "priority": true
   },
   {
     "site_id": "co-lincoln",
@@ -3316,7 +3348,8 @@
     "site_id": "co-otero",
     "state": "colorado",
     "legacy_slug": "otero-county",
-    "type": "county"
+    "type": "county",
+    "priority": true
   },
   {
     "site_id": "co-ouray",
@@ -4186,7 +4219,8 @@
     "site_id": "id-valley",
     "state": "idaho",
     "legacy_slug": "valley-county",
-    "type": "county"
+    "type": "county",
+    "priority": true
   },
   {
     "site_id": "id-washington",
@@ -4282,7 +4316,8 @@
     "site_id": "in-dearborn",
     "state": "indiana",
     "legacy_slug": "dearborn-county",
-    "type": "county"
+    "type": "county",
+    "priority": true
   },
   {
     "site_id": "in-decatur",
@@ -4480,7 +4515,8 @@
     "site_id": "in-madison",
     "state": "indiana",
     "legacy_slug": "madison-county",
-    "type": "county"
+    "type": "county",
+    "priority": true
   },
   {
     "site_id": "in-marion",
@@ -4672,7 +4708,8 @@
     "site_id": "in-tipton",
     "state": "indiana",
     "legacy_slug": "tipton-county",
-    "type": "county"
+    "type": "county",
+    "priority": true
   },
   {
     "site_id": "in-union",
@@ -4960,7 +4997,8 @@
     "site_id": "ia-fremont",
     "state": "iowa",
     "legacy_slug": "fremont-county",
-    "type": "county"
+    "type": "county",
+    "priority": true
   },
   {
     "site_id": "ia-greene",
@@ -5356,7 +5394,8 @@
     "site_id": "ks-atchison",
     "state": "kansas",
     "legacy_slug": "atchison-county",
-    "type": "county"
+    "type": "county",
+    "priority": true
   },
   {
     "site_id": "ks-barber",
@@ -5380,13 +5419,15 @@
     "site_id": "ks-brown",
     "state": "kansas",
     "legacy_slug": "brown-county",
-    "type": "county"
+    "type": "county",
+    "priority": true
   },
   {
     "site_id": "ks-butler",
     "state": "kansas",
     "legacy_slug": "butler-county",
-    "type": "county"
+    "type": "county",
+    "priority": true
   },
   {
     "site_id": "ks-chase",
@@ -5494,7 +5535,8 @@
     "site_id": "ks-ellis",
     "state": "kansas",
     "legacy_slug": "ellis-county",
-    "type": "county"
+    "type": "county",
+    "priority": true
   },
   {
     "site_id": "ks-ellsworth",
@@ -5506,13 +5548,15 @@
     "site_id": "ks-finney",
     "state": "kansas",
     "legacy_slug": "finney-county",
-    "type": "county"
+    "type": "county",
+    "priority": true
   },
   {
     "site_id": "ks-ford",
     "state": "kansas",
     "legacy_slug": "ford-county",
-    "type": "county"
+    "type": "county",
+    "priority": true
   },
   {
     "site_id": "ks-franklin",
@@ -5578,7 +5622,8 @@
     "site_id": "ks-harvey",
     "state": "kansas",
     "legacy_slug": "harvey-county",
-    "type": "county"
+    "type": "county",
+    "priority": true
   },
   {
     "site_id": "ks-haskell",
@@ -5632,7 +5677,8 @@
     "site_id": "ks-kiowa",
     "state": "kansas",
     "legacy_slug": "kiowa-county",
-    "type": "county"
+    "type": "county",
+    "priority": true
   },
   {
     "site_id": "ks-labette",
@@ -5650,7 +5696,8 @@
     "site_id": "ks-leavenworth",
     "state": "kansas",
     "legacy_slug": "leavenworth-county",
-    "type": "county"
+    "type": "county",
+    "priority": true
   },
   {
     "site_id": "ks-lincoln",
@@ -5692,7 +5739,8 @@
     "site_id": "ks-mcpherson",
     "state": "kansas",
     "legacy_slug": "mcpherson-county",
-    "type": "county"
+    "type": "county",
+    "priority": true
   },
   {
     "site_id": "ks-meade",
@@ -5704,7 +5752,8 @@
     "site_id": "ks-miami",
     "state": "kansas",
     "legacy_slug": "miami-county",
-    "type": "county"
+    "type": "county",
+    "priority": true
   },
   {
     "site_id": "ks-mitchell",
@@ -5770,7 +5819,8 @@
     "site_id": "ks-ottawa",
     "state": "kansas",
     "legacy_slug": "ottawa-county",
-    "type": "county"
+    "type": "county",
+    "priority": true
   },
   {
     "site_id": "ks-pawnee",
@@ -5794,7 +5844,8 @@
     "site_id": "ks-pratt",
     "state": "kansas",
     "legacy_slug": "pratt-county",
-    "type": "county"
+    "type": "county",
+    "priority": true
   },
   {
     "site_id": "ks-rawlins",
@@ -5896,7 +5947,8 @@
     "site_id": "ks-stafford",
     "state": "kansas",
     "legacy_slug": "stafford-county",
-    "type": "county"
+    "type": "county",
+    "priority": true
   },
   {
     "site_id": "ks-stanton",
@@ -5914,7 +5966,8 @@
     "site_id": "ks-sumner",
     "state": "kansas",
     "legacy_slug": "sumner-county",
-    "type": "county"
+    "type": "county",
+    "priority": true
   },
   {
     "site_id": "ks-thomas",
@@ -7342,7 +7395,8 @@
     "site_id": "mi-arenac",
     "state": "michigan",
     "legacy_slug": "arenac-county",
-    "type": "county"
+    "type": "county",
+    "priority": true
   },
   {
     "site_id": "mi-baraga",
@@ -7696,7 +7750,8 @@
     "site_id": "mi-ogemaw",
     "state": "michigan",
     "legacy_slug": "ogemaw-county",
-    "type": "county"
+    "type": "county",
+    "priority": true
   },
   {
     "site_id": "mi-ontonagon",
@@ -7714,7 +7769,8 @@
     "site_id": "mi-oscoda",
     "state": "michigan",
     "legacy_slug": "oscoda-county",
-    "type": "county"
+    "type": "county",
+    "priority": true
   },
   {
     "site_id": "mi-otsego",
@@ -8308,7 +8364,8 @@
     "site_id": "mo-andrew",
     "state": "missouri",
     "legacy_slug": "andrew-county",
-    "type": "county"
+    "type": "county",
+    "priority": true
   },
   {
     "site_id": "mo-atchison",
@@ -8320,7 +8377,8 @@
     "site_id": "mo-audrain",
     "state": "missouri",
     "legacy_slug": "audrain-county",
-    "type": "county"
+    "type": "county",
+    "priority": true
   },
   {
     "site_id": "mo-barry",
@@ -8356,7 +8414,8 @@
     "site_id": "mo-boone",
     "state": "missouri",
     "legacy_slug": "boone-county",
-    "type": "county"
+    "type": "county",
+    "priority": true
   },
   {
     "site_id": "mo-buchanan",
@@ -8440,7 +8499,8 @@
     "site_id": "mo-clay",
     "state": "missouri",
     "legacy_slug": "clay-county",
-    "type": "county"
+    "type": "county",
+    "priority": true
   },
   {
     "site_id": "mo-clinton",
@@ -8458,7 +8518,8 @@
     "site_id": "mo-cooper",
     "state": "missouri",
     "legacy_slug": "cooper-county",
-    "type": "county"
+    "type": "county",
+    "priority": true
   },
   {
     "site_id": "mo-crawford",
@@ -8584,7 +8645,8 @@
     "site_id": "mo-jackson",
     "state": "missouri",
     "legacy_slug": "jackson-county",
-    "type": "county"
+    "type": "county",
+    "priority": true
   },
   {
     "site_id": "mo-jasper",
@@ -8638,19 +8700,22 @@
     "site_id": "mo-lincoln",
     "state": "missouri",
     "legacy_slug": "lincoln-county",
-    "type": "county"
+    "type": "county",
+    "priority": true
   },
   {
     "site_id": "mo-linn",
     "state": "missouri",
     "legacy_slug": "linn-county",
-    "type": "county"
+    "type": "county",
+    "priority": true
   },
   {
     "site_id": "mo-livingston",
     "state": "missouri",
     "legacy_slug": "livingston-county",
-    "type": "county"
+    "type": "county",
+    "priority": true
   },
   {
     "site_id": "mo-macon",
@@ -8710,13 +8775,15 @@
     "site_id": "mo-monroe",
     "state": "missouri",
     "legacy_slug": "monroe-county",
-    "type": "county"
+    "type": "county",
+    "priority": true
   },
   {
     "site_id": "mo-montgomery",
     "state": "missouri",
     "legacy_slug": "montgomery-county",
-    "type": "county"
+    "type": "county",
+    "priority": true
   },
   {
     "site_id": "mo-morgan",
@@ -8746,7 +8813,8 @@
     "site_id": "mo-oregon",
     "state": "missouri",
     "legacy_slug": "oregon-county",
-    "type": "county"
+    "type": "county",
+    "priority": true
   },
   {
     "site_id": "mo-osage",
@@ -8788,7 +8856,8 @@
     "site_id": "mo-pike",
     "state": "missouri",
     "legacy_slug": "pike-county",
-    "type": "county"
+    "type": "county",
+    "priority": true
   },
   {
     "site_id": "mo-platte",
@@ -8824,7 +8893,8 @@
     "site_id": "mo-randolph",
     "state": "missouri",
     "legacy_slug": "randolph-county",
-    "type": "county"
+    "type": "county",
+    "priority": true
   },
   {
     "site_id": "mo-ray",
@@ -8848,7 +8918,8 @@
     "site_id": "mo-saline",
     "state": "missouri",
     "legacy_slug": "saline-county",
-    "type": "county"
+    "type": "county",
+    "priority": true
   },
   {
     "site_id": "mo-schuyler",
@@ -9712,7 +9783,8 @@
     "site_id": "ne-otoe",
     "state": "nebraska",
     "legacy_slug": "otoe-county",
-    "type": "county"
+    "type": "county",
+    "priority": true
   },
   {
     "site_id": "ne-pawnee",
@@ -10732,7 +10804,8 @@
     "site_id": "ny-yates",
     "state": "new-york",
     "legacy_slug": "yates-county",
-    "type": "county"
+    "type": "county",
+    "priority": true
   },
   {
     "site_id": "nc-alamance",
@@ -11710,7 +11783,8 @@
     "site_id": "ok-carter",
     "state": "oklahoma",
     "legacy_slug": "carter-county",
-    "type": "county"
+    "type": "county",
+    "priority": true
   },
   {
     "site_id": "ok-cherokee",
@@ -12028,7 +12102,8 @@
     "site_id": "ok-pottawatomie",
     "state": "oklahoma",
     "legacy_slug": "pottawatomie-county",
-    "type": "county"
+    "type": "county",
+    "priority": true
   },
   {
     "site_id": "ok-pushmataha",
@@ -14044,7 +14119,8 @@
     "site_id": "ut-duchesne",
     "state": "utah",
     "legacy_slug": "duchesne-county",
-    "type": "county"
+    "type": "county",
+    "priority": true
   },
   {
     "site_id": "ut-emery",
@@ -14128,7 +14204,8 @@
     "site_id": "ut-sevier",
     "state": "utah",
     "legacy_slug": "sevier-county",
-    "type": "county"
+    "type": "county",
+    "priority": true
   },
   {
     "site_id": "ut-summit",
@@ -14146,7 +14223,8 @@
     "site_id": "ut-uintah",
     "state": "utah",
     "legacy_slug": "uintah-county",
-    "type": "county"
+    "type": "county",
+    "priority": true
   },
   {
     "site_id": "ut-utah",
@@ -15922,36 +16000,42 @@
     "site_id": "ma-worcester",
     "state": "massachusetts",
     "legacy_slug": "worcester-county",
-    "type": "county"
+    "type": "county",
+    "priority": true
   },
   {
     "site_id": "oh-allen",
     "state": "ohio",
     "legacy_slug": "allen-county",
-    "type": "county"
+    "type": "county",
+    "priority": true
   },
   {
     "site_id": "oh-monroe",
     "state": "ohio",
     "legacy_slug": "monroe-county",
-    "type": "county"
+    "type": "county",
+    "priority": true
   },
   {
     "site_id": "oh-paulding",
     "state": "ohio",
     "legacy_slug": "paulding-county",
-    "type": "county"
+    "type": "county",
+    "priority": true
   },
   {
     "site_id": "oh-putnam",
     "state": "ohio",
     "legacy_slug": "putnam-county",
-    "type": "county"
+    "type": "county",
+    "priority": true
   },
   {
     "site_id": "oh-van-wert",
     "state": "ohio",
     "legacy_slug": "van-wert-county",
-    "type": "county"
+    "type": "county",
+    "priority": true
   }
 ]
