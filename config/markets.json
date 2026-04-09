@@ -15917,5 +15917,41 @@
     "state": "alaska",
     "legacy_slug": "yukon-koyukuk-census-area",
     "type": "county"
+  },
+  {
+    "site_id": "ma-worcester",
+    "state": "massachusetts",
+    "legacy_slug": "worcester-county",
+    "type": "county"
+  },
+  {
+    "site_id": "oh-allen",
+    "state": "ohio",
+    "legacy_slug": "allen-county",
+    "type": "county"
+  },
+  {
+    "site_id": "oh-monroe",
+    "state": "ohio",
+    "legacy_slug": "monroe-county",
+    "type": "county"
+  },
+  {
+    "site_id": "oh-paulding",
+    "state": "ohio",
+    "legacy_slug": "paulding-county",
+    "type": "county"
+  },
+  {
+    "site_id": "oh-putnam",
+    "state": "ohio",
+    "legacy_slug": "putnam-county",
+    "type": "county"
+  },
+  {
+    "site_id": "oh-van-wert",
+    "state": "ohio",
+    "legacy_slug": "van-wert-county",
+    "type": "county"
   }
 ]
