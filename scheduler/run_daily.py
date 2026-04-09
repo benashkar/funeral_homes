@@ -89,6 +89,7 @@ def scrape_market(market, session):
         conn.close()
 
         scraper = LegacyScraper(market, session=session)
+        scraper._last_listing_diag = None
         obits = scraper.scrape_today(known_urls=known_urls)
         found = len(obits)
 
@@ -125,7 +126,9 @@ def scrape_market(market, session):
                 obit["s3_photo_url_16x9"] = None
 
         new_count = batch_insert_obits(conn, obits, site_id)
-        log_run(conn, site_id, found, new_count)
+        # Log diagnostic info when listing page returned 0 links
+        diag = scraper._last_listing_diag if found == 0 else None
+        log_run(conn, site_id, found, new_count, errors=diag)
         conn.close()
 
         return (site_id, found, new_count, None)

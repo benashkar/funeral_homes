@@ -170,12 +170,26 @@ class LegacyScraper:
 
             resp = polite_get(self.session, page_url)
             if not resp:
-                logger.error("[%s] Failed to fetch listing page %d", self.site_id, page_num)
+                logger.error("[%s] Failed to fetch listing page %d (blocked/timeout)", self.site_id, page_num)
+                # Store diagnostic info so scrape_log captures the failure reason
+                self._last_listing_diag = "listing_fetch_failed"
                 break
 
             page_urls = self._extract_obit_links(resp.text)
             if not page_urls:
-                logger.info("[%s] Page %d returned 0 Legacy URLs — stopping pagination", self.site_id, page_num)
+                # Diagnostic: log response details to understand WHY 0 links
+                resp_len = len(resp.text)
+                title_match = re.search(r"<title[^>]*>(.*?)</title>", resp.text[:2000], re.IGNORECASE | re.DOTALL)
+                title = title_match.group(1).strip()[:80] if title_match else "no-title"
+                has_captcha = "captcha" in resp.text[:5000].lower() or "challenge" in resp.text[:5000].lower()
+                has_blocked = "blocked" in resp.text[:5000].lower() or "denied" in resp.text[:5000].lower()
+                diag = f"status={resp.status_code},len={resp_len},title={title}"
+                if has_captcha:
+                    diag += ",CAPTCHA_DETECTED"
+                if has_blocked:
+                    diag += ",BLOCKED_DETECTED"
+                logger.info("[%s] Page %d returned 0 Legacy URLs — %s", self.site_id, page_num, diag)
+                self._last_listing_diag = diag
                 break
 
             all_obit_urls.extend(page_urls)
