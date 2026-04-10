@@ -21,6 +21,7 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 load_dotenv()
 
 from scraper.legacy_scraper import LegacyScraper
+from scraper.newspaper_direct import fetch_newspaper_obit_urls, parse_newspaper_obit_detail
 from scraper.db_writer import get_connection, batch_insert_obits, log_run, get_known_urls_for_site, flag_bad_and_dupes, upsert_funeral_home, enrich_funeral_home, ensure_schema
 from utils.logger import get_logger
 from utils.rate_limiter import create_session
@@ -42,15 +43,47 @@ MARKETS_PATH = os.path.join(
     "config",
     "markets.json",
 )
+CR_MANIFEST_PATH = os.path.join(
+    os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
+    "config",
+    "cherry_road_markets.json",
+)
+
+
+def _load_cr_newspaper_urls():
+    """Return {site_id: [newspaper_url, ...]} from the Cherry Road manifest.
+
+    Multiple newspapers can serve the same county (different cities), so
+    each site_id may have multiple URLs to try.
+    """
+    try:
+        with open(CR_MANIFEST_PATH, "r", encoding="utf-8") as f:
+            cr = json.load(f)
+    except FileNotFoundError:
+        return {}
+    by_site = {}
+    for entry in cr:
+        url = entry.get("newspaper_url")
+        if url:
+            by_site.setdefault(entry["site_id"], []).append(url)
+    return by_site
 
 
 def load_markets():
     """Load the markets list from config/markets.json.
 
-    If SCRAPE_STATES env var is set, filters to only those states.
+    Augments each market with `newspaper_urls` (list) from the Cherry
+    Road manifest when applicable. If SCRAPE_STATES env var is set,
+    filters to only those states.
     """
     with open(MARKETS_PATH, "r", encoding="utf-8") as f:
         markets = json.load(f)
+
+    cr_urls = _load_cr_newspaper_urls()
+    for m in markets:
+        urls = cr_urls.get(m["site_id"])
+        if urls:
+            m["newspaper_urls"] = urls
 
     if SCRAPE_STATES:
         allowed = {s.strip().lower() for s in SCRAPE_STATES.split(",")}
@@ -92,6 +125,34 @@ def scrape_market(market, session):
         scraper._last_listing_diag = None
         obits = scraper.scrape_today(known_urls=known_urls)
         found = len(obits)
+
+        # Newspaper-direct fallback: if Legacy.com gave us nothing AND this
+        # market has a configured newspaper website, try fetching obits
+        # from there. This bypasses Legacy.com entirely for Cherry Road papers.
+        newspaper_urls = market.get("newspaper_urls") or []
+        if found == 0 and newspaper_urls:
+            for np_url in newspaper_urls:
+                np_obit_urls = fetch_newspaper_obit_urls(session, np_url)
+                np_obit_urls = [u for u in np_obit_urls if u not in known_urls]
+                if not np_obit_urls:
+                    continue
+                logger.info(
+                    "[%s] newspaper-direct yielded %d new URLs from %s",
+                    site_id, len(np_obit_urls), np_url,
+                )
+                for u in np_obit_urls:
+                    detail = parse_newspaper_obit_detail(session, u)
+                    if detail:
+                        # Match LegacyScraper output schema
+                        detail.setdefault("published_date", None)
+                        detail.setdefault("death_date", None)
+                        detail.setdefault("death_city", None)
+                        detail.setdefault("death_state", None)
+                        detail.setdefault("funeral_home", None)
+                        detail.setdefault("funeral_home_detail", None)
+                        detail.setdefault("photo_url", None)
+                        obits.append(detail)
+            found = len(obits)
 
         conn = get_connection()
 

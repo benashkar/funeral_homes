@@ -94,5 +94,5 @@
   {"newspaper": "Vernal Express", "city": "Vernal", "state": "UT", "site_id": "ut-uintah"},
   {"newspaper": "Uintah Basin Standard", "city": "Duchesne", "state": "UT", "site_id": "ut-duchesne"},
   {"newspaper": "The Richfield Reaper", "city": "Richfield", "state": "UT", "site_id": "ut-sevier"},
-  {"newspaper": "Claxton Enterprise", "city": "Claxton", "state": "GA", "site_id": "ga-claxton"}
+  {"newspaper": "Claxton Enterprise", "city": "Claxton", "state": "GA", "site_id": "ga-claxton", "newspaper_url": "https://www.claxtonenterprise.com/obituaries"}
 ]

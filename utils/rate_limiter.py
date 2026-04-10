@@ -3,13 +3,26 @@
 Thread-safe: uses a global lock so concurrent workers share one rate limit.
 Treats 403/429/503 as rate limiting (Legacy.com's response to too many
 requests) and retries with exponential backoff up to MAX_RETRIES times.
+
+Uses curl_cffi to impersonate Chrome 120's TLS fingerprint (JA3/JA4),
+HTTP/2 framing, and header order — bypasses Legacy.com's bot detection
+that targets the standard `requests` library's signature.
 """
 
 import random
 import threading
 import time
 
-import requests
+# curl_cffi is a drop-in replacement for `requests` that mimics real
+# browser TLS fingerprints. Falls back to stdlib requests if unavailable.
+try:
+    from curl_cffi import requests as cffi_requests
+    _USE_CURL_CFFI = True
+except ImportError:
+    import requests as cffi_requests  # type: ignore
+    _USE_CURL_CFFI = False
+
+import requests as _stdlib_requests
 
 from utils.logger import get_logger
 
@@ -71,16 +84,27 @@ def _record_block():
 
 
 def create_session():
-    """Return a requests.Session with browser-like headers."""
-    session = requests.Session()
-    session.headers.update({
-        "User-Agent": USER_AGENT,
-        "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
-        "Accept-Language": "en-US,en;q=0.9",
-        "Accept-Encoding": "gzip, deflate, br",
-        "Connection": "keep-alive",
-        "Upgrade-Insecure-Requests": "1",
-    })
+    """Return a session with browser-like headers and TLS fingerprint.
+
+    When curl_cffi is available, the session impersonates Chrome 120 —
+    matching its TLS handshake, HTTP/2 framing, and header order. This
+    is critical to bypass Legacy.com's bot fingerprinting which blocks
+    the default `requests` library on sight.
+    """
+    if _USE_CURL_CFFI:
+        session = cffi_requests.Session(impersonate="chrome120")
+        logger.info("[OK] HTTP session using curl_cffi (Chrome 120 impersonation)")
+    else:
+        session = cffi_requests.Session()
+        session.headers.update({
+            "User-Agent": USER_AGENT,
+            "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
+            "Accept-Language": "en-US,en;q=0.9",
+            "Accept-Encoding": "gzip, deflate, br",
+            "Connection": "keep-alive",
+            "Upgrade-Insecure-Requests": "1",
+        })
+        logger.warning("curl_cffi not installed — falling back to stdlib requests")
     return session
 
 
@@ -100,13 +124,15 @@ def polite_get(session, url):
     for attempt in range(1, MAX_RETRIES + 1):
         _rate_limit()
 
-        # Rotate User-Agent on retries
-        if attempt > 1:
+        # Rotate User-Agent on retries (only useful for stdlib requests path;
+        # curl_cffi sessions manage their own headers via impersonation).
+        if attempt > 1 and not _USE_CURL_CFFI:
             session.headers["User-Agent"] = random.choice(USER_AGENTS)
 
         try:
             resp = session.get(url, timeout=30)
-        except requests.RequestException as e:
+        except (_stdlib_requests.RequestException, Exception) as e:
+            # curl_cffi raises curl_cffi.CurlError, not requests.RequestException
             logger.error("Request failed (attempt %d) for %s: %s", attempt, url, e)
             if attempt < MAX_RETRIES:
                 time.sleep(INITIAL_BACKOFF * (2 ** (attempt - 1)))
