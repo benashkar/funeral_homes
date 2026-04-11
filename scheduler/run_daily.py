@@ -38,6 +38,10 @@ STATE_COOLDOWN = int(os.environ.get("STATE_COOLDOWN", "60"))
 # e.g. SCRAPE_STATES=mn,wi,il,ia,in  — if unset, scrapes all states
 SCRAPE_STATES = os.environ.get("SCRAPE_STATES", "")
 
+# PRIORITY_ONLY mode: when "true", skip all non-priority markets.
+# Used by the CR rescue scraper to only hit Cherry Road counties on a fresh IP.
+PRIORITY_ONLY = os.environ.get("PRIORITY_ONLY", "").lower() in ("true", "1", "yes")
+
 MARKETS_PATH = os.path.join(
     os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
     "config",
@@ -89,6 +93,10 @@ def load_markets():
         allowed = {s.strip().lower() for s in SCRAPE_STATES.split(",")}
         markets = [m for m in markets if m["site_id"].split("-")[0] in allowed]
         logger.info("Filtered to %d markets for states: %s", len(markets), SCRAPE_STATES)
+
+    if PRIORITY_ONLY:
+        markets = [m for m in markets if m.get("priority")]
+        logger.info("PRIORITY_ONLY mode: filtered to %d priority markets", len(markets))
 
     return markets
 
