@@ -21,7 +21,7 @@ def build_listing_url(market):
                 'publication_slug'.
 
     Returns:
-        Full listing URL string.
+        Full listing URL string (primary URL).
     """
     pub_slug = market.get("publication_slug")
     if pub_slug:
@@ -29,3 +29,24 @@ def build_listing_url(market):
     state = market["state"]
     slug = market["legacy_slug"]
     return f"{BASE_URL}/{state}/{slug}"
+
+
+def build_listing_urls(market):
+    """Build ALL possible listing URLs for a market (primary + fallbacks).
+
+    For markets with a publication_slug, returns both the publication URL
+    AND the geographic URL. The scraper tries them in order until one
+    returns obit links.
+
+    Returns:
+        List of listing URL strings, ordered by preference.
+    """
+    urls = [build_listing_url(market)]
+    pub_slug = market.get("publication_slug")
+    if pub_slug:
+        # Also try the geographic URL as fallback
+        state = market["state"]
+        slug = market["legacy_slug"]
+        geo_url = f"{BASE_URL}/{state}/{slug}"
+        urls.append(geo_url)
+    return urls

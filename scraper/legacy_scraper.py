@@ -5,7 +5,7 @@ import re
 
 from bs4 import BeautifulSoup
 
-from scraper.url_builder import build_listing_url
+from scraper.url_builder import build_listing_url, build_listing_urls
 from scraper.obit_parser import (
     parse_name, parse_dates, parse_funeral_home, parse_funeral_home_detail,
     parse_obit_text, parse_photo_url, parse_death_place,
@@ -46,7 +46,8 @@ class LegacyScraper:
     def __init__(self, market, session=None):
         self.market = market
         self.site_id = market["site_id"]
-        self.listing_url = build_listing_url(market)
+        self.listing_urls = build_listing_urls(market)
+        self.listing_url = self.listing_urls[0]  # Primary URL
         self.session = session or create_session()
 
     def _extract_obit_links(self, html):
@@ -164,40 +165,51 @@ class LegacyScraper:
         known_urls = known_urls or set()
         all_obit_urls = []
 
-        for page_num in range(1, MAX_LISTING_PAGES + 1):
-            page_url = self.listing_url if page_num == 1 else f"{self.listing_url}?page={page_num}"
-            logger.info("[%s] Fetching listing page %d: %s", self.site_id, page_num, page_url)
+        # Try each listing URL in order (primary + fallbacks).
+        # Markets with a publication_slug have both publication and geographic URLs.
+        active_listing_url = self.listing_url
+        for listing_url_idx, candidate_url in enumerate(self.listing_urls):
+            if listing_url_idx > 0:
+                logger.info("[%s] Trying fallback listing URL: %s", self.site_id, candidate_url)
+            active_listing_url = candidate_url
+            first_page_worked = False
 
-            resp = polite_get(self.session, page_url)
-            if not resp:
-                logger.error("[%s] Failed to fetch listing page %d (blocked/timeout)", self.site_id, page_num)
-                # Store diagnostic info so scrape_log captures the failure reason
-                self._last_listing_diag = "listing_fetch_failed"
-                break
+            for page_num in range(1, MAX_LISTING_PAGES + 1):
+                page_url = active_listing_url if page_num == 1 else f"{active_listing_url}?page={page_num}"
+                logger.info("[%s] Fetching listing page %d: %s", self.site_id, page_num, page_url)
 
-            page_urls = self._extract_obit_links(resp.text)
-            if not page_urls:
-                # Diagnostic: log response details to understand WHY 0 links
-                resp_len = len(resp.text)
-                title_match = re.search(r"<title[^>]*>(.*?)</title>", resp.text[:2000], re.IGNORECASE | re.DOTALL)
-                title = title_match.group(1).strip()[:80] if title_match else "no-title"
-                has_captcha = "captcha" in resp.text[:5000].lower() or "challenge" in resp.text[:5000].lower()
-                has_blocked = "blocked" in resp.text[:5000].lower() or "denied" in resp.text[:5000].lower()
-                diag = f"status={resp.status_code},len={resp_len},title={title}"
-                if has_captcha:
-                    diag += ",CAPTCHA_DETECTED"
-                if has_blocked:
-                    diag += ",BLOCKED_DETECTED"
-                logger.info("[%s] Page %d returned 0 Legacy URLs — %s", self.site_id, page_num, diag)
-                self._last_listing_diag = diag
-                break
+                resp = polite_get(self.session, page_url)
+                if not resp:
+                    logger.error("[%s] Failed to fetch listing page %d (blocked/timeout)", self.site_id, page_num)
+                    self._last_listing_diag = "listing_fetch_failed"
+                    break
 
-            all_obit_urls.extend(page_urls)
+                page_urls = self._extract_obit_links(resp.text)
+                if not page_urls:
+                    resp_len = len(resp.text)
+                    title_match = re.search(r"<title[^>]*>(.*?)</title>", resp.text[:2000], re.IGNORECASE | re.DOTALL)
+                    title = title_match.group(1).strip()[:80] if title_match else "no-title"
+                    has_captcha = "captcha" in resp.text[:5000].lower() or "challenge" in resp.text[:5000].lower()
+                    has_blocked = "blocked" in resp.text[:5000].lower() or "denied" in resp.text[:5000].lower()
+                    diag = f"status={resp.status_code},len={resp_len},title={title}"
+                    if has_captcha:
+                        diag += ",CAPTCHA_DETECTED"
+                    if has_blocked:
+                        diag += ",BLOCKED_DETECTED"
+                    logger.info("[%s] Page %d returned 0 Legacy URLs — %s", self.site_id, page_num, diag)
+                    self._last_listing_diag = diag
+                    break
 
-            # If every URL on this page is already known, no point continuing
-            new_on_page = [u for u in page_urls if u not in known_urls]
-            if not new_on_page:
-                logger.info("[%s] Page %d had 0 new URLs — stopping pagination", self.site_id, page_num)
+                first_page_worked = True
+                all_obit_urls.extend(page_urls)
+
+                new_on_page = [u for u in page_urls if u not in known_urls]
+                if not new_on_page:
+                    logger.info("[%s] Page %d had 0 new URLs — stopping pagination", self.site_id, page_num)
+                    break
+
+            # If this URL worked, don't try fallbacks
+            if first_page_worked or all_obit_urls:
                 break
 
         # Deduplicate across pages while preserving order
