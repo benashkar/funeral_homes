@@ -24,7 +24,7 @@ from scraper.legacy_scraper import LegacyScraper
 from scraper.newspaper_direct import fetch_newspaper_obit_urls, parse_newspaper_obit_detail
 from scraper.db_writer import get_connection, batch_insert_obits, log_run, get_known_urls_for_site, flag_bad_and_dupes, upsert_funeral_home, enrich_funeral_home, ensure_schema
 from utils.logger import get_logger
-from utils.rate_limiter import create_session
+from utils.rate_limiter import create_session, MAX_RETRIES
 from utils.s3_uploader import upload_photo
 from utils.telegram import send_message as telegram_send
 
@@ -129,7 +129,13 @@ def scrape_market(market, session):
         known_urls = get_known_urls_for_site(conn, site_id)
         conn.close()
 
-        scraper = LegacyScraper(market, session=session)
+        # Priority markets (Cherry Road) get full retries. Non-priority get
+        # 1 attempt only to avoid burning 8+ min per failure and timing out
+        # the 12-hour Render cron limit before reaching all markets.
+        is_priority = market.get("priority", False)
+        listing_retries = MAX_RETRIES if is_priority else 1
+
+        scraper = LegacyScraper(market, session=session, max_retries=listing_retries)
         scraper._last_listing_diag = None
         obits = scraper.scrape_today(known_urls=known_urls)
         found = len(obits)

@@ -108,20 +108,23 @@ def create_session():
     return session
 
 
-def polite_get(session, url):
+def polite_get(session, url, max_retries=None):
     """GET a URL with global rate limiting and retry on rate-limit responses.
 
-    Retries up to MAX_RETRIES times on 403/429/503 with exponential backoff.
+    Retries up to max_retries times on 403/429/503 with exponential backoff.
     Rotates User-Agent on each retry to evade fingerprint-based blocks.
 
     Args:
         session: requests.Session with headers configured.
         url: Target URL.
+        max_retries: Override MAX_RETRIES for this call. Use 1 for
+            non-priority markets to avoid burning 8+ minutes per failure.
 
     Returns:
         requests.Response on success, None on failure.
     """
-    for attempt in range(1, MAX_RETRIES + 1):
+    retries = max_retries if max_retries is not None else MAX_RETRIES
+    for attempt in range(1, retries + 1):
         _rate_limit()
 
         # Rotate User-Agent on retries (only useful for stdlib requests path;
@@ -134,14 +137,14 @@ def polite_get(session, url):
         except (_stdlib_requests.RequestException, Exception) as e:
             # curl_cffi raises curl_cffi.CurlError, not requests.RequestException
             logger.error("Request failed (attempt %d) for %s: %s", attempt, url, e)
-            if attempt < MAX_RETRIES:
+            if attempt < retries:
                 time.sleep(INITIAL_BACKOFF * (2 ** (attempt - 1)))
                 continue
             return None
 
         if resp.status_code in (403, 429, 503):
             blocks = _record_block()
-            if attempt >= MAX_RETRIES:
+            if attempt >= retries:
                 logger.warning(
                     "Still blocked (%d) after %d attempts for %s",
                     resp.status_code, attempt, url,
@@ -152,7 +155,7 @@ def polite_get(session, url):
             backoff += random.uniform(0, 10)  # jitter
             logger.warning(
                 "Got %d for %s (attempt %d/%d, blocks=%d) — backing off %.0fs",
-                resp.status_code, url, attempt, MAX_RETRIES, blocks, backoff,
+                resp.status_code, url, attempt, retries, blocks, backoff,
             )
             time.sleep(backoff)
             continue

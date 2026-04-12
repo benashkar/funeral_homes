@@ -43,12 +43,13 @@ class LegacyScraper:
         market: Dict from markets.json with keys site_id, state, legacy_slug, type.
     """
 
-    def __init__(self, market, session=None):
+    def __init__(self, market, session=None, max_retries=None):
         self.market = market
         self.site_id = market["site_id"]
         self.listing_urls = build_listing_urls(market)
         self.listing_url = self.listing_urls[0]  # Primary URL
         self.session = session or create_session()
+        self.max_retries = max_retries  # None = use polite_get default
 
     def _extract_obit_links(self, html):
         """Parse the listing page HTML and return unique obit detail URLs.
@@ -178,7 +179,7 @@ class LegacyScraper:
                 page_url = active_listing_url if page_num == 1 else f"{active_listing_url}?page={page_num}"
                 logger.info("[%s] Fetching listing page %d: %s", self.site_id, page_num, page_url)
 
-                resp = polite_get(self.session, page_url)
+                resp = polite_get(self.session, page_url, max_retries=self.max_retries)
                 if not resp:
                     logger.error("[%s] Failed to fetch listing page %d (blocked/timeout)", self.site_id, page_num)
                     self._last_listing_diag = "listing_fetch_failed"
