@@ -9,6 +9,7 @@ HTTP/2 framing, and header order — bypasses Legacy.com's bot detection
 that targets the standard `requests` library's signature.
 """
 
+import os
 import random
 import threading
 import time
@@ -42,6 +43,12 @@ USER_AGENT = USER_AGENTS[0]  # Default for create_session
 MIN_DELAY = 6.0       # seconds between ANY two requests (global)
 MAX_RETRIES = 4       # total attempts including first try
 INITIAL_BACKOFF = 60  # seconds to wait on first 403/429/503
+
+# Residential proxy support — set PROXY_URL env var to route requests
+# through a proxy service (Bright Data, SmartProxy, etc.).
+# Example: PROXY_URL=http://user:pass@proxy.brightdata.com:22225
+# When set, ALL requests go through the proxy. When unset, direct.
+PROXY_URL = os.environ.get("PROXY_URL", "")
 
 # Global rate limiter — ensures all threads share one delay
 _lock = threading.Lock()
@@ -90,6 +97,9 @@ def create_session():
     matching its TLS handshake, HTTP/2 framing, and header order. This
     is critical to bypass Legacy.com's bot fingerprinting which blocks
     the default `requests` library on sight.
+
+    If PROXY_URL env var is set, all requests are routed through the
+    residential proxy (Bright Data, SmartProxy, IPRoyal, etc.).
     """
     if _USE_CURL_CFFI:
         session = cffi_requests.Session(impersonate="chrome120")
@@ -105,6 +115,16 @@ def create_session():
             "Upgrade-Insecure-Requests": "1",
         })
         logger.warning("curl_cffi not installed — falling back to stdlib requests")
+
+    if PROXY_URL:
+        session.proxies = {
+            "http": PROXY_URL,
+            "https": PROXY_URL,
+        }
+        # Log proxy host only (not credentials)
+        proxy_host = PROXY_URL.split("@")[-1] if "@" in PROXY_URL else PROXY_URL
+        logger.info("[OK] Proxy configured: %s", proxy_host)
+
     return session
 
 
