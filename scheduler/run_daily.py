@@ -206,7 +206,10 @@ def scrape_market(market, session):
         log_run(conn, site_id, found, new_count, errors=diag)
         conn.close()
 
-        return (site_id, found, new_count, None)
+        # Surface a blocked listing as an error so the in-memory counter
+        # (used by the per-scraper Telegram summary) doesn't report "0 errors"
+        # when every market was IP-blocked.
+        return (site_id, found, new_count, diag)
 
     except Exception as e:
         logger.error("[%s] Failed: %s", site_id, e)
@@ -298,11 +301,13 @@ def run():
     total_found = 0
     total_new = 0
     errors = 0
+    blocked = 0
 
     for i, (state_abbr, state_markets) in enumerate(states, 1):
         state_found = 0
         state_new = 0
         state_errors = 0
+        state_blocked = 0
 
         # Sort priority markets first so Cherry Road counties are scraped
         # before any rate-limit accumulation hits later in the run.
@@ -312,17 +317,20 @@ def run():
             site_id, found, new, error = scrape_market(market, session)
             state_found += found
             state_new += new
-            if error:
+            if error and error.startswith("listing_fetch_failed"):
+                state_blocked += 1
+            elif error:
                 state_errors += 1
 
         total_found += state_found
         total_new += state_new
         errors += state_errors
+        blocked += state_blocked
 
         logger.info(
-            "[%s] State %d/%d done — markets=%d, found=%d, new=%d, errors=%d",
+            "[%s] State %d/%d done — markets=%d, found=%d, new=%d, blocked=%d, errors=%d",
             state_abbr.upper(), i, len(states), len(state_markets),
-            state_found, state_new, state_errors,
+            state_found, state_new, state_blocked, state_errors,
         )
 
         # Cooldown between states (skip after last state)
@@ -339,18 +347,26 @@ def run():
     backfill_fixed = _run_auto_backfill()
 
     logger.info(
-        "Run complete — markets=%d, found=%d, new=%d, errors=%d, flagged_bad=%d, flagged_dupes=%d",
-        len(markets), total_found, total_new, errors, bad, duped,
+        "Run complete — markets=%d, found=%d, new=%d, blocked=%d, errors=%d, flagged_bad=%d, flagged_dupes=%d",
+        len(markets), total_found, total_new, blocked, errors, bad, duped,
     )
 
     # Send Telegram summary
     states_label = SCRAPE_STATES if SCRAPE_STATES else "ALL"
-    status = "OK" if errors == 0 else f"ERRORS: {errors}"
+    blocked_pct = (blocked * 100 // len(markets)) if markets else 0
+    if blocked_pct >= 50:
+        status = f"BLOCKED {blocked_pct}% — IPs likely banned, set PROXY_URL"
+    elif errors:
+        status = f"ERRORS: {errors}"
+    elif blocked:
+        status = f"DEGRADED: {blocked} blocked"
+    else:
+        status = "OK"
     msg = (
         f"<b>Obituary Scraper — {states_label}</b>\n"
         f"Status: {status}\n"
         f"Markets: {len(markets)} | Found: {total_found} | New: {total_new}\n"
-        f"Errors: {errors} | Bad: {bad} | Dupes: {duped}"
+        f"Blocked: {blocked} | Errors: {errors} | Bad: {bad} | Dupes: {duped}"
     )
     if backfill_fixed:
         msg += f"\nBackfill: {backfill_fixed}"

@@ -591,4 +591,95 @@ def create_app():
             logger.error("Health route error: %s", e)
             return f"<h1>Database Error</h1><p>{e}</p>", 503
 
+    @app.route("/health-status.json")
+    def health_status_json():
+        """Structured health snapshot for the Layer-3 diagnostic agent.
+
+        Splits IP-blocked markets (errors LIKE 'listing_fetch_failed%') from
+        real errors so the agent can pick the right Fix Recipe.
+        """
+        try:
+            conn = _get_conn()
+            cur = conn.cursor(dictionary=True)
+
+            cur.execute("""
+                SELECT COUNT(DISTINCT site_id) AS markets,
+                       SUM(obits_found) AS found,
+                       SUM(obits_new) AS new_obits,
+                       SUM(CASE WHEN errors LIKE 'listing_fetch_failed%' THEN 1 ELSE 0 END) AS blocked,
+                       SUM(CASE WHEN errors IS NOT NULL AND errors != ''
+                                  AND errors NOT LIKE 'listing_fetch_failed%' THEN 1 ELSE 0 END) AS errors
+                FROM scrape_log WHERE run_date = CURDATE()
+            """)
+            today = cur.fetchone() or {}
+            markets = today.get("markets") or 0
+            blocked = today.get("blocked") or 0
+
+            cur.execute("SELECT SUM(obits_new) AS n FROM scrape_log WHERE run_date = CURDATE() - INTERVAL 1 DAY")
+            yesterday_new = (cur.fetchone() or {}).get("n") or 0
+
+            cur.execute("""
+                SELECT site_id, errors FROM scrape_log
+                WHERE run_date = CURDATE() AND errors LIKE 'listing_fetch_failed%'
+                ORDER BY site_id LIMIT 20
+            """)
+            blocked_sample = [r["site_id"] for r in cur.fetchall()]
+
+            cur.execute("""
+                SELECT site_id, errors FROM scrape_log
+                WHERE run_date = CURDATE() AND errors IS NOT NULL AND errors != ''
+                  AND errors NOT LIKE 'listing_fetch_failed%'
+                ORDER BY run_at DESC LIMIT 20
+            """)
+            error_sample = [{"site_id": r["site_id"], "error": (r["errors"] or "")[:200]} for r in cur.fetchall()]
+
+            cur.execute("""
+                SELECT site_id, DATEDIFF(CURDATE(), MAX(run_date)) AS days_stale
+                FROM scrape_log GROUP BY site_id
+                HAVING days_stale >= 3 ORDER BY days_stale DESC LIMIT 50
+            """)
+            stale = [{"site_id": r["site_id"], "days_stale": r["days_stale"]} for r in cur.fetchall()]
+
+            cur.execute("SELECT COUNT(*) AS c FROM obituaries WHERE is_deleted=0 AND death_date IS NULL")
+            missing_dd = cur.fetchone()["c"]
+            cur.execute("SELECT COUNT(*) AS c FROM obituaries WHERE is_deleted=0 AND funeral_home IS NULL")
+            missing_fh = cur.fetchone()["c"]
+            cur.execute("SELECT COUNT(*) AS c FROM obituaries WHERE is_deleted=0")
+            total_obits = cur.fetchone()["c"]
+
+            cur.close()
+            conn.close()
+
+            blocked_pct = (blocked * 100 // markets) if markets else 0
+            if blocked_pct >= 50:
+                status = "BLOCKED"
+            elif (today.get("errors") or 0) > 0 or blocked > 0 or stale:
+                status = "ISSUES"
+            else:
+                status = "OK"
+
+            return jsonify({
+                "status": status,
+                "scrape_today": {
+                    "markets": markets,
+                    "found": today.get("found") or 0,
+                    "new": today.get("new_obits") or 0,
+                    "blocked": blocked,
+                    "blocked_pct": blocked_pct,
+                    "errors": today.get("errors") or 0,
+                    "yesterday_new": yesterday_new,
+                },
+                "blocked_sample": blocked_sample,
+                "error_sample": error_sample,
+                "stale_markets": stale,
+                "backfill": {
+                    "missing_death_date": missing_dd,
+                    "missing_funeral_home": missing_fh,
+                    "total_obits": total_obits,
+                },
+            })
+        except Exception as e:
+            logger.error("health_status_json error: %s", e)
+            return jsonify({"error": str(e)}), 503
+
     return app

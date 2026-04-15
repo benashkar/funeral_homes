@@ -38,12 +38,14 @@ def run():
     cur.execute("SELECT COUNT(*) as cnt FROM funeral_homes WHERE address IS NOT NULL")
     fh_with_address = cur.fetchone()["cnt"]
 
-    # Today's scrape stats
+    # Today's scrape stats — split "blocked" (IP/rate-limit) from real errors
+    # so the headline doesn't bury a total IP block under a generic error count.
     cur.execute("""
         SELECT COUNT(DISTINCT site_id) as markets,
                SUM(obits_found) as found,
                SUM(obits_new) as new_obits,
-               SUM(CASE WHEN errors IS NOT NULL AND errors != '' THEN 1 ELSE 0 END) as error_count
+               SUM(CASE WHEN errors LIKE 'listing_fetch_failed%' THEN 1 ELSE 0 END) as blocked_count,
+               SUM(CASE WHEN errors IS NOT NULL AND errors != '' AND errors NOT LIKE 'listing_fetch_failed%' THEN 1 ELSE 0 END) as error_count
         FROM scrape_log
         WHERE run_date = CURDATE()
     """)
@@ -51,7 +53,9 @@ def run():
     today_markets = today["markets"] or 0
     today_found = today["found"] or 0
     today_new = today["new_obits"] or 0
+    today_blocked = today["blocked_count"] or 0
     today_errors = today["error_count"] or 0
+    blocked_pct = (today_blocked * 100 // today_markets) if today_markets else 0
 
     # Yesterday's stats for comparison
     cur.execute("""
@@ -106,7 +110,12 @@ def run():
 
     # Build the message
     all_scrapers_ok = len(missing_states) == 0
-    pipeline_status = "ALL OK" if all_scrapers_ok and today_errors == 0 else "ISSUES"
+    if blocked_pct >= 50:
+        pipeline_status = f"BLOCKED {blocked_pct}% — IPs banned, set PROXY_URL"
+    elif not all_scrapers_ok or today_errors > 0 or today_blocked > 0:
+        pipeline_status = "ISSUES"
+    else:
+        pipeline_status = "ALL OK"
 
     lines = [
         f"<b>Daily Pipeline Report — {date.today()}</b>",
@@ -117,6 +126,7 @@ def run():
         f"  Markets scraped: {today_markets:,}",
         f"  Obits found: {today_found:,}",
         f"  New obits: {today_new:,} (yesterday: {yesterday_new:,})",
+        f"  Blocked: {today_blocked:,} ({blocked_pct}%)",
         f"  Errors: {today_errors}",
         f"  States covered: {len(states_today)}/51",
     ]
