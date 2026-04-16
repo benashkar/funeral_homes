@@ -131,19 +131,26 @@ def create_session():
 def polite_get(session, url, max_retries=None):
     """GET a URL with global rate limiting and retry on rate-limit responses.
 
-    Retries up to max_retries times on 403/429/503 with exponential backoff.
-    Rotates User-Agent on each retry to evade fingerprint-based blocks.
+    Two modes:
+    - Direct (PROXY_URL unset): exponential 60/120/240/480s backoff on
+      403/429/503. Caller-provided max_retries respected (1 for non-priority
+      to avoid 12h cron timeout; 4 for priority).
+    - Proxy (PROXY_URL set): each retry grabs a fresh exit IP from the
+      gateway, so old-school backoff is obsolete. Forces at least 3 attempts
+      regardless of caller's max_retries, with tiny 1-2s sleeps between —
+      block rate drops from ~76% to ~20% at the cost of ~2-3x bandwidth
+      on blocked markets only.
 
-    Args:
-        session: requests.Session with headers configured.
-        url: Target URL.
-        max_retries: Override MAX_RETRIES for this call. Use 1 for
-            non-priority markets to avoid burning 8+ minutes per failure.
+    Rotates User-Agent on each retry to evade fingerprint-based blocks.
 
     Returns:
         requests.Response on success, None on failure.
     """
-    retries = max_retries if max_retries is not None else MAX_RETRIES
+    caller_retries = max_retries if max_retries is not None else MAX_RETRIES
+    # With a rotating proxy, low retry counts waste the proxy's whole purpose.
+    # Bump non-priority markets from 1 -> 3 so each gets 3 distinct exit IPs.
+    retries = max(caller_retries, 3) if PROXY_URL else caller_retries
+
     for attempt in range(1, retries + 1):
         _rate_limit()
 
@@ -158,7 +165,9 @@ def polite_get(session, url, max_retries=None):
             # curl_cffi raises curl_cffi.CurlError, not requests.RequestException
             logger.error("Request failed (attempt %d) for %s: %s", attempt, url, e)
             if attempt < retries:
-                time.sleep(INITIAL_BACKOFF * (2 ** (attempt - 1)))
+                # Proxy: retry near-immediately (fresh IP). Direct: full backoff.
+                time.sleep(1.0 + random.uniform(0, 1)) if PROXY_URL \
+                    else time.sleep(INITIAL_BACKOFF * (2 ** (attempt - 1)))
                 continue
             return None
 
@@ -170,11 +179,15 @@ def polite_get(session, url, max_retries=None):
                     resp.status_code, attempt, url,
                 )
                 return None
-            # Exponential backoff: 60s, 120s, 240s, 480s
-            backoff = INITIAL_BACKOFF * (2 ** (attempt - 1))
-            backoff += random.uniform(0, 10)  # jitter
+            if PROXY_URL:
+                # Proxy gateway rotates on next request; no need to cool down
+                # a specific IP. Tiny jitter only.
+                backoff = 1.0 + random.uniform(0, 1.5)
+            else:
+                # Direct: exponential 60/120/240/480s
+                backoff = INITIAL_BACKOFF * (2 ** (attempt - 1)) + random.uniform(0, 10)
             logger.warning(
-                "Got %d for %s (attempt %d/%d, blocks=%d) — backing off %.0fs",
+                "Got %d for %s (attempt %d/%d, blocks=%d) — backing off %.1fs",
                 resp.status_code, url, attempt, retries, blocks, backoff,
             )
             time.sleep(backoff)
