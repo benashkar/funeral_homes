@@ -40,8 +40,10 @@ USER_AGENT = USER_AGENTS[0]  # Default for create_session
 
 # Aggressive politeness settings — Legacy.com rate-limits Render IPs hard.
 # Original 3s/120s/1-retry config caused 84% of listing fetches to fail.
-MIN_DELAY = 6.0       # seconds between ANY two requests (global)
+MIN_DELAY = 6.0       # seconds between ANY two requests (global, direct mode)
+MIN_DELAY_PROXY = 1.0 # rotating-gateway IPs change per request; no per-IP politeness needed
 MAX_RETRIES = 4       # total attempts including first try
+PROXY_MIN_RETRIES = 8 # with rotating proxy ~60% Cloudflare-flagged, 8 attempts → ~1.7% miss
 INITIAL_BACKOFF = 60  # seconds to wait on first 403/429/503
 
 # Residential proxy support — set PROXY_URL env var to route requests
@@ -58,21 +60,61 @@ _consecutive_blocks = 0
 
 
 def _rate_limit():
-    """Block until MIN_DELAY has elapsed since the last request.
+    """Block until the minimum delay has elapsed since the last request.
 
-    Adds dynamic extra delay if we've been getting blocked recently.
+    Adds dynamic extra delay if we've been getting blocked recently. In proxy
+    mode the per-request IP rotates, so we use a much smaller base delay.
     """
     global _last_request_time, _consecutive_blocks
     with _lock:
         now = time.monotonic()
-        # Add extra delay proportional to recent blocks (up to ~30s extra)
-        delay = MIN_DELAY + min(_consecutive_blocks * 3, 30)
+        base = MIN_DELAY_PROXY if PROXY_URL else MIN_DELAY
+        # Add extra delay proportional to recent blocks (up to ~30s extra in direct mode)
+        block_penalty = min(_consecutive_blocks * 3, 30)
+        if PROXY_URL:
+            block_penalty = min(block_penalty, 3)  # cap proxy-mode penalty
+        delay = base + block_penalty
         # Add small random jitter to avoid thundering-herd patterns
         delay += random.uniform(0, 1.0)
         elapsed = now - _last_request_time
         if elapsed < delay:
             time.sleep(delay - elapsed)
         _last_request_time = time.monotonic()
+
+
+# Cloudflare/anti-bot challenge markers that appear in the first few KB of the body.
+_CHALLENGE_MARKERS = (
+    "just a moment",       # Cloudflare 5s challenge title
+    "cf-challenge",        # Cloudflare challenge platform
+    "challenge-platform",  # Cloudflare challenge JS bundle path
+    "/cdn-cgi/challenge",  # Cloudflare challenge endpoint
+    "checking your browser",  # Cloudflare interstitial
+    "attention required",  # Cloudflare block page
+)
+
+
+def _is_challenge_response(resp):
+    """True if a 200 response is actually an anti-bot challenge page.
+
+    Detects two variants the rate_limiter would otherwise treat as success:
+    1) Cloudflare 200 challenge: body contains "Just a moment" / cf-challenge markers
+    2) Silent 200 challenge: large body but no <title> tag anywhere — Legacy.com's
+       fingerprint-block returns a sizable interstitial with no <title>.
+
+    Real obit listing/detail pages always have a <title data-react-helmet> tag.
+    """
+    if resp.status_code != 200:
+        return False
+    body = resp.text or ""
+    if len(body) < 1000:
+        return False  # too small to be a meaningful response either way
+    head = body[:5000].lower()
+    if any(m in head for m in _CHALLENGE_MARKERS):
+        return True
+    # Silent challenge: >50KB body with no <title> tag is not a real Legacy page.
+    if len(body) > 50_000 and "<title" not in body.lower():
+        return True
+    return False
 
 
 def _record_success():
@@ -148,8 +190,9 @@ def polite_get(session, url, max_retries=None):
     """
     caller_retries = max_retries if max_retries is not None else MAX_RETRIES
     # With a rotating proxy, low retry counts waste the proxy's whole purpose.
-    # Bump non-priority markets from 1 -> 3 so each gets 3 distinct exit IPs.
-    retries = max(caller_retries, 3) if PROXY_URL else caller_retries
+    # ~60% of 711proxies US residential IPs are Cloudflare-flagged today; 8 attempts
+    # → 0.6^8 = 1.7% miss-rate. Each retry pulls a fresh exit IP from the gateway.
+    retries = max(caller_retries, PROXY_MIN_RETRIES) if PROXY_URL else caller_retries
 
     for attempt in range(1, retries + 1):
         _rate_limit()
@@ -171,12 +214,15 @@ def polite_get(session, url, max_retries=None):
                 continue
             return None
 
-        if resp.status_code in (403, 429, 503):
+        is_status_block = resp.status_code in (403, 429, 503)
+        is_challenge = (resp.status_code == 200 and _is_challenge_response(resp))
+        if is_status_block or is_challenge:
             blocks = _record_block()
+            block_kind = "challenge-200" if is_challenge else str(resp.status_code)
             if attempt >= retries:
                 logger.warning(
-                    "Still blocked (%d) after %d attempts for %s",
-                    resp.status_code, attempt, url,
+                    "Still blocked (%s) after %d attempts for %s",
+                    block_kind, attempt, url,
                 )
                 return None
             if PROXY_URL:
@@ -187,8 +233,8 @@ def polite_get(session, url, max_retries=None):
                 # Direct: exponential 60/120/240/480s
                 backoff = INITIAL_BACKOFF * (2 ** (attempt - 1)) + random.uniform(0, 10)
             logger.warning(
-                "Got %d for %s (attempt %d/%d, blocks=%d) — backing off %.1fs",
-                resp.status_code, url, attempt, retries, blocks, backoff,
+                "Got %s for %s (attempt %d/%d, blocks=%d) — backing off %.1fs",
+                block_kind, url, attempt, retries, blocks, backoff,
             )
             time.sleep(backoff)
             continue
