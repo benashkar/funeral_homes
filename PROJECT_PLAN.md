@@ -1,6 +1,6 @@
 # Legacy Obituary Scraper — Project Plan
 
-_Last updated: 2026-05-14 12:15 CT_
+_Last updated: 2026-05-14 12:40 CT_
 
 ## Active Incident — 92% Block Rate (RESOLVED, verifying)
 
@@ -43,6 +43,25 @@ Verified live:
 Note: per-retry `Got 403` still appears 0–9×/scraper — expected. The 711proxy
 pool is ~27% Cloudflare-flagged per request; the 8-retry policy (fresh IP each
 retry) absorbs it. Only a market that loses all 8 retries counts as blocked.
+
+### Progress snapshot — 2026-05-14 12:40 CT (~25 min into manual runs)
+All 10 jobs still `running`, healthy:
+
+| scraper | parsed | listing_blocked |
+|---------|--------|-----------------|
+| scraper-1  | 64  | 0 |
+| scraper-2  | 139 | 0 |
+| scraper-3  | 297 | 1 |
+| scraper-4  | 288 | 9 |
+| scraper-5  | 95  | 0 |
+| scraper-6  | 86  | 0 |
+| scraper-7  | 85  | 0 |
+| scraper-8  | 65  | 0 |
+| scraper-9  | 134 | 0 |
+| scraper-10 | 155 | 0 |
+
+Compare: scraper-10 alone had 437 blocked markets pre-fix. Full runs take
+several hours; jobs will complete on their own and send per-run Telegrams.
 
 ## Architecture (current)
 - 10 cron scrapers (scraper-1..10), staggered 06:00–10:00 UTC, all Virginia/Docker
