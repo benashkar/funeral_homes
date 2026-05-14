@@ -138,7 +138,8 @@ def upload_photo(session, photo_url, site_id, obit_id):
         return None
 
     try:
-        resp = session.get(photo_url, timeout=15)
+        from utils.rate_limiter import PROXIES
+        resp = session.get(photo_url, timeout=15, proxies=PROXIES)
         if resp.status_code != 200:
             logger.warning("[%s] Photo download failed (%d): %s", site_id, resp.status_code, photo_url)
             return None

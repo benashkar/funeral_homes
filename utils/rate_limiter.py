@@ -52,6 +52,12 @@ INITIAL_BACKOFF = 60  # seconds to wait on first 403/429/503
 # When set, ALL requests go through the proxy. When unset, direct.
 PROXY_URL = os.environ.get("PROXY_URL", "")
 
+# Proxies dict passed EXPLICITLY to every request. Setting `session.proxies`
+# as a bare attribute is a `requests` idiom that curl_cffi does NOT honor —
+# doing only that silently sends traffic direct from the datacenter IP, which
+# Cloudflare blocks on sight. Always pass this to session.get(proxies=...).
+PROXIES = {"http": PROXY_URL, "https": PROXY_URL} if PROXY_URL else None
+
 # Global rate limiter — ensures all threads share one delay
 _lock = threading.Lock()
 _last_request_time = 0.0
@@ -132,42 +138,80 @@ def _record_block():
         return _consecutive_blocks
 
 
+def _make_stdlib_session():
+    """A plain `requests` session with browser-like headers."""
+    session = _stdlib_requests.Session()
+    session.headers.update({
+        "User-Agent": USER_AGENT,
+        "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
+        "Accept-Language": "en-US,en;q=0.9",
+        "Accept-Encoding": "gzip, deflate, br",
+        "Connection": "keep-alive",
+        "Upgrade-Insecure-Requests": "1",
+    })
+    return session
+
+
 def create_session():
-    """Return a session with browser-like headers and TLS fingerprint.
+    """Return an HTTP session tuned for the current egress mode.
 
-    When curl_cffi is available, the session impersonates Chrome 120 —
-    matching its TLS handshake, HTTP/2 framing, and header order. This
-    is critical to bypass Legacy.com's bot fingerprinting which blocks
-    the default `requests` library on sight.
+    Two modes, because the right tool differs:
 
-    If PROXY_URL env var is set, all requests are routed through the
-    residential proxy (Bright Data, SmartProxy, IPRoyal, etc.).
+    - PROXY mode (PROXY_URL set): use plain `requests`. The residential
+      proxy IP is what gets us past Cloudflare; an honest `requests` TLS
+      fingerprint from a residential IP passes ~73% of the time. curl_cffi's
+      Chrome-120 impersonation, when tunneled through the HTTP proxy, is
+      *reliably* blocked (0% success in testing) — the impersonated
+      ClientHello does not survive the proxy CONNECT cleanly and the
+      "claims-to-be-Chrome-but-isn't" mismatch is itself a hard bot signal.
+
+    - DIRECT mode (no PROXY_URL): use curl_cffi Chrome-120 impersonation.
+      From a datacenter IP we need every disguise we can get; plain
+      `requests` is blocked on sight there.
     """
+    if PROXY_URL:
+        session = _make_stdlib_session()
+        session._impersonated = False
+        session.proxies = dict(PROXIES)
+        proxy_host = PROXY_URL.split("@")[-1] if "@" in PROXY_URL else PROXY_URL
+        logger.info("[OK] HTTP session: stdlib requests via proxy %s", proxy_host)
+        _proxy_self_test(session)
+        return session
+
     if _USE_CURL_CFFI:
         session = cffi_requests.Session(impersonate="chrome120")
+        session._impersonated = True
         logger.info("[OK] HTTP session using curl_cffi (Chrome 120 impersonation)")
     else:
-        session = cffi_requests.Session()
-        session.headers.update({
-            "User-Agent": USER_AGENT,
-            "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
-            "Accept-Language": "en-US,en;q=0.9",
-            "Accept-Encoding": "gzip, deflate, br",
-            "Connection": "keep-alive",
-            "Upgrade-Insecure-Requests": "1",
-        })
+        session = _make_stdlib_session()
+        session._impersonated = False
         logger.warning("curl_cffi not installed — falling back to stdlib requests")
 
-    if PROXY_URL:
-        session.proxies = {
-            "http": PROXY_URL,
-            "https": PROXY_URL,
-        }
-        # Log proxy host only (not credentials)
-        proxy_host = PROXY_URL.split("@")[-1] if "@" in PROXY_URL else PROXY_URL
-        logger.info("[OK] Proxy configured: %s", proxy_host)
-
     return session
+
+
+def _proxy_self_test(session):
+    """Verify traffic actually exits through the proxy, not the datacenter IP.
+
+    Fetches an IP-echo endpoint through the session. If the request goes
+    direct (curl_cffi ignoring a misconfigured proxy), this is the only
+    place we'd catch it before a full run silently 100%-blocks.
+    """
+    try:
+        resp = session.get(
+            "https://api.ipify.org", proxies=PROXIES, timeout=15
+        )
+        exit_ip = (resp.text or "").strip()
+        if resp.status_code == 200 and exit_ip:
+            logger.info("[OK] Proxy self-test passed — exit IP %s", exit_ip)
+        else:
+            logger.warning(
+                "[WARN] Proxy self-test odd response: status=%s body=%r",
+                resp.status_code, exit_ip[:80],
+            )
+    except Exception as e:
+        logger.error("[ERR] Proxy self-test FAILED — traffic may be going "
+                     "direct from the datacenter IP: %s", e)
 
 
 def polite_get(session, url, max_retries=None):
@@ -199,11 +243,14 @@ def polite_get(session, url, max_retries=None):
 
         # Rotate User-Agent on retries (only useful for stdlib requests path;
         # curl_cffi sessions manage their own headers via impersonation).
-        if attempt > 1 and not _USE_CURL_CFFI:
+        if attempt > 1 and not getattr(session, "_impersonated", False):
             session.headers["User-Agent"] = random.choice(USER_AGENTS)
 
         try:
-            resp = session.get(url, timeout=30)
+            # Pass proxies= explicitly — curl_cffi does not reliably honor
+            # the session.proxies attribute, and a silent direct-connection
+            # fallback gets 100%-blocked by Cloudflare from the datacenter IP.
+            resp = session.get(url, timeout=30, proxies=PROXIES)
         except (_stdlib_requests.RequestException, Exception) as e:
             # curl_cffi raises curl_cffi.CurlError, not requests.RequestException
             logger.error("Request failed (attempt %d) for %s: %s", attempt, url, e)
