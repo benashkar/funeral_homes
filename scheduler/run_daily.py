@@ -42,6 +42,40 @@ SCRAPE_STATES = os.environ.get("SCRAPE_STATES", "")
 # Used by the CR rescue scraper to only hit Cherry Road counties on a fresh IP.
 PRIORITY_ONLY = os.environ.get("PRIORITY_ONLY", "").lower() in ("true", "1", "yes")
 
+# Silent-zero canary: when this many markets all report 0 obits without
+# blocks or errors, treat the run as suspect (almost always a parser break).
+SILENT_ZERO_MARKETS_THRESHOLD = 5
+
+
+def _build_status(markets_count, total_found, blocked, errors):
+    """Build the Telegram status string from run counters.
+
+    Priority order:
+      1. BLOCKED — proxy/IP issue dominates (>=50% block rate)
+      2. ERRORS  — exceptions raised during the run
+      3. WARNING — silent zero, the high-value canary for parser breaks
+      4. DEGRADED — some blocks but data still flowed
+      5. OK
+
+    The silent-zero check is the lesson from the 2026-05-17 incident: 22
+    markets returned Found=0 with Errors=0 and Blocked=0 for two days
+    before anyone noticed, because Status: OK looked benign. Now that
+    same pattern produces a loud WARNING line.
+
+    Pure function so it can be unit-tested without standing up the
+    whole scraper.
+    """
+    blocked_pct = (blocked * 100 // markets_count) if markets_count else 0
+    if blocked_pct >= 50:
+        return f"BLOCKED {blocked_pct}% — IPs likely banned, set PROXY_URL"
+    if errors:
+        return f"ERRORS: {errors}"
+    if total_found == 0 and markets_count >= SILENT_ZERO_MARKETS_THRESHOLD:
+        return "WARNING: silent zero — possible parser break"
+    if blocked:
+        return f"DEGRADED: {blocked} blocked"
+    return "OK"
+
 MARKETS_PATH = os.path.join(
     os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
     "config",
@@ -353,15 +387,12 @@ def run():
 
     # Send Telegram summary
     states_label = SCRAPE_STATES if SCRAPE_STATES else "ALL"
-    blocked_pct = (blocked * 100 // len(markets)) if markets else 0
-    if blocked_pct >= 50:
-        status = f"BLOCKED {blocked_pct}% — IPs likely banned, set PROXY_URL"
-    elif errors:
-        status = f"ERRORS: {errors}"
-    elif blocked:
-        status = f"DEGRADED: {blocked} blocked"
-    else:
-        status = "OK"
+    status = _build_status(
+        markets_count=len(markets),
+        total_found=total_found,
+        blocked=blocked,
+        errors=errors,
+    )
     msg = (
         f"<b>Obituary Scraper — {states_label}</b>\n"
         f"Status: {status}\n"
