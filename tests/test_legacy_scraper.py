@@ -105,3 +105,74 @@ class TestExtractObitLinks:
         scraper = _make_scraper()
         urls = scraper._extract_obit_links(CSS_LISTING_HTML)
         assert not any("somefuneralhome" in u for u in urls)
+
+
+# --- Fixture: Next.js (2026 H2+) RSC result cards ---
+
+NEXTJS_LISTING_HTML = """
+<html><head>
+<script type="application/ld+json">
+{"@context":"http://schema.org","@type":"WebPage","mainEntity":{"@type":"ItemList","itemListElement":[
+  {"@type":"ListItem","position":1,"url":"https://www.legacy.com/person/Janet-S.-Bick-61392356","name":"Janet S. Bick Obituary"},
+  {"@type":"ListItem","position":2,"url":"https://www.legacy.com/person/David-Eyre-61357971","name":"David Eyre Obituary"}
+]}}
+</script>
+</head>
+<body>
+<article data-testid="result-card-0">
+  <a aria-label="View details for Janet S. Bick" href="/person/Janet-S.-Bick-61392356">
+    <div>Janet S. Bick</div>
+    <span>1931 - 2026</span>
+  </a>
+  <p title="Janet S. Bick passed away on Saturday, May 16, 2026. The family is being cared for by E C Nurre Funeral Home.">snippet</p>
+  <a href="https://www.ecnurre.com/obituaries/Janet-S-Bick"><span data-slot="badge">E C Nurre Funeral Home</span></a>
+</article>
+<article data-testid="result-card-1">
+  <a aria-label="View details for David Eyre" href="/person/David-Eyre-61357971">
+    <div>David Eyre</div>
+  </a>
+  <p title="David L. Eyre, age 77, of Sardinia, Ohio, passed away on Monday, May 11, 2026.">snippet2</p>
+  <a><span data-slot="badge">Edgington Funeral Home - Mowrystown</span></a>
+</article>
+</body></html>
+"""
+
+
+class TestExtractObitLinksNextJs:
+    """Regression tests for the Next.js / RSC listing format (2026 H2+)."""
+
+    def test_extracts_person_urls_from_jsonld(self):
+        scraper = _make_scraper()
+        urls = scraper._extract_obit_links(NEXTJS_LISTING_HTML)
+        assert "https://www.legacy.com/person/Janet-S.-Bick-61392356" in urls
+        assert "https://www.legacy.com/person/David-Eyre-61357971" in urls
+
+    def test_person_urls_match_filter_regex(self):
+        from scraper.legacy_scraper import _LEGACY_OBIT_URL_RE
+        assert _LEGACY_OBIT_URL_RE.search("https://www.legacy.com/person/Janet-S.-Bick-61392356")
+        assert _LEGACY_OBIT_URL_RE.search("/person/Jane-Doe-12345")
+        # Must NOT match listing/category paths
+        assert not _LEGACY_OBIT_URL_RE.search("https://www.legacy.com/us/obituaries/local/ohio")
+        assert not _LEGACY_OBIT_URL_RE.search("/person/")
+
+
+class TestListingMetadataHarvest:
+    """Tests for _extract_listing_metadata (funeral_home + snippet harvesting)."""
+
+    def test_harvests_funeral_home_and_snippet(self):
+        meta = LegacyScraper._extract_listing_metadata(NEXTJS_LISTING_HTML)
+        assert "https://www.legacy.com/person/Janet-S.-Bick-61392356" in meta
+        entry = meta["https://www.legacy.com/person/Janet-S.-Bick-61392356"]
+        assert entry["name"] == "Janet S. Bick"
+        assert entry["funeral_home"] == "E C Nurre Funeral Home"
+        assert "passed away" in entry["snippet"]
+
+    def test_returns_empty_when_no_cards(self):
+        meta = LegacyScraper._extract_listing_metadata("<html><body></body></html>")
+        assert meta == {}
+
+    def test_old_format_listing_returns_empty(self):
+        # Old listing pages don't have data-testid="result-card-*", so this
+        # harvester is a no-op there — the existing JSON-LD path still works.
+        meta = LegacyScraper._extract_listing_metadata(LISTING_HTML)
+        assert meta == {}

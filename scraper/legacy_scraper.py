@@ -16,17 +16,23 @@ from utils.rate_limiter import create_session, polite_get
 
 logger = get_logger(__name__)
 
-# Matches Legacy.com obituary detail URLs — both standard and publication-scoped:
-#   /us/obituaries/name/john-smith-obituary
-#   /us/obituaries/claxtonenterprise/name/judy-anderson-obituary
-_LEGACY_OBIT_URL_RE = re.compile(r'/us/obituaries/(?:[^/]+/)?name/', re.IGNORECASE)
+# Matches Legacy.com obituary detail URLs — three formats:
+#   /us/obituaries/name/john-smith-obituary             (standard, pre-2026)
+#   /us/obituaries/claxtonenterprise/name/judy-anderson (publication-scoped)
+#   /person/Janet-S.-Bick-61392356                       (Next.js / RSC, 2026 H2+)
+_LEGACY_OBIT_URL_RE = re.compile(
+    r"/us/obituaries/(?:[^/]+/)?name/|/person/[A-Za-z0-9._'-]+-\d+\b",
+    re.IGNORECASE,
+)
 
-# CSS selectors for the listing page — fallback if JSON-LD is missing.
-# Legacy.com listing pages use personalization-link anchors inside result cards.
+# Listing pages embed the canonical URL on each result card via aria-label /
+# href attribute. Selectors below cover the old anchor patterns and the new
+# Next.js <a aria-label="View details for ..." href="/person/..."> link.
 OBIT_CARD_LINK_SELECTOR = (
-    "a[href*='/us/obituaries/'][href*='/name/'],"  # standard + publication-scoped
-    "a.personalization-link,"                       # personalization-style links
-    "div[data-component='ObituaryCard'] a[href]"    # component-based cards
+    "a[href*='/us/obituaries/'][href*='/name/'],"   # standard + publication-scoped
+    "a.personalization-link,"                        # personalization-style links
+    "div[data-component='ObituaryCard'] a[href],"    # component-based cards (legacy)
+    "a[href^='/person/'][aria-label^='View details']"  # Next.js RSC cards (2026 H2+)
 )
 
 # Base domain for resolving relative URLs
@@ -50,6 +56,67 @@ class LegacyScraper:
         self.listing_url = self.listing_urls[0]  # Primary URL
         self.session = session or create_session()
         self.max_retries = max_retries  # None = use polite_get default
+
+    @staticmethod
+    def _extract_listing_metadata(html):
+        """Build a {url: {funeral_home, snippet, name}} map from listing-page cards.
+
+        Legacy.com's Next.js (2026 H2+) detail pages at /person/{slug}-{id} no
+        longer expose funeral_home or obit_text in JSON-LD — that data is only
+        on the listing-page result cards. We harvest it here once per listing
+        page so each obit can be enriched without an extra detail fetch.
+
+        Card structure:
+          <article data-testid="result-card-N">
+            <a aria-label="View details for {NAME}" href="/person/...">
+              <div>{NAME}</div><span>YYYY - YYYY</span>
+            </a>
+            <p title="{snippet}">{snippet}</p>
+            <a><span data-slot="badge">{FUNERAL HOME}</span></a>
+          </article>
+
+        Args:
+            html: Raw HTML string of a listing page.
+
+        Returns:
+            Dict keyed by absolute URL. Each value is a dict with optional keys
+            funeral_home, snippet, name. Missing keys mean we couldn't extract
+            that field for that card.
+        """
+        soup = BeautifulSoup(html, "lxml")
+        metadata = {}
+        for card in soup.select("article[data-testid^='result-card-']"):
+            main_link = card.select_one(
+                "a[aria-label^='View details for '][href^='/person/']"
+            )
+            if not main_link:
+                continue
+            href = main_link.get("href") or ""
+            if not href:
+                continue
+            full_url = href if href.startswith("http") else LEGACY_DOMAIN + href
+
+            entry = {}
+            aria = main_link.get("aria-label") or ""
+            if aria.startswith("View details for "):
+                entry["name"] = aria[len("View details for "):].strip()
+
+            snippet_el = card.select_one("p[title]")
+            if snippet_el is not None:
+                snippet = (snippet_el.get("title") or snippet_el.get_text(strip=True) or "").strip()
+                if snippet:
+                    entry["snippet"] = snippet
+
+            fh_el = card.select_one("span[data-slot='badge']")
+            if fh_el is not None:
+                fh = fh_el.get_text(strip=True)
+                if fh:
+                    entry["funeral_home"] = fh
+
+            if entry:
+                metadata[full_url] = entry
+
+        return metadata
 
     def _extract_obit_links(self, html):
         """Parse the listing page HTML and return unique obit detail URLs.
@@ -112,12 +179,15 @@ class LegacyScraper:
 
         return list(urls)
 
-    def _parse_detail_page(self, html, url):
+    def _parse_detail_page(self, html, url, listing_meta=None):
         """Parse a single obituary detail page into a structured dict.
 
         Args:
             html: Raw HTML string of the detail page.
             url: The URL of this page (stored for dedup).
+            listing_meta: Optional dict harvested from the listing page card
+                ({name, snippet, funeral_home}). Used to backfill fields the
+                new Next.js /person/ detail pages no longer expose in JSON-LD.
 
         Returns:
             Dict with keys: legacy_url, deceased_name, published_date,
@@ -127,6 +197,12 @@ class LegacyScraper:
         dates = parse_dates(soup)
         place = parse_death_place(soup)
         obit_text = parse_obit_text(soup)
+        listing_meta = listing_meta or {}
+
+        # On /person/ pages, the detail page has no obit body — use the
+        # listing-page snippet (the only place it still lives).
+        if not obit_text and listing_meta.get("snippet"):
+            obit_text = listing_meta["snippet"]
 
         # Fallback: parse death date from text if JSON-LD has no deathDate
         death_date = dates["death"]
@@ -137,10 +213,16 @@ class LegacyScraper:
         funeral_home = parse_funeral_home(soup)
         if not funeral_home and obit_text:
             funeral_home = parse_funeral_home_from_text(obit_text)
+        # Last resort: the funeral-home badge harvested from the listing card.
+        if not funeral_home and listing_meta.get("funeral_home"):
+            funeral_home = listing_meta["funeral_home"]
+
+        # Name fallback chain: detail-page JSON-LD → listing-card aria-label.
+        deceased_name = parse_name(soup) or listing_meta.get("name") or ""
 
         return {
             "legacy_url": url,
-            "deceased_name": parse_name(soup),
+            "deceased_name": deceased_name,
             "published_date": dates["published"],
             "death_date": death_date,
             "death_city": place["city"],
@@ -165,6 +247,10 @@ class LegacyScraper:
         """
         known_urls = known_urls or set()
         all_obit_urls = []
+        # Per-URL metadata harvested from listing-page cards (funeral_home,
+        # snippet, name). Used by _parse_detail_page to backfill fields the
+        # new /person/ pages no longer expose.
+        listing_metadata = {}
 
         # Try each listing URL in order (primary + fallbacks).
         # Markets with a publication_slug have both publication and geographic URLs.
@@ -186,6 +272,11 @@ class LegacyScraper:
                     break
 
                 page_urls = self._extract_obit_links(resp.text)
+                # Harvest funeral_home + snippet from result-card HTML before
+                # we move on; new /person/ pages have no other source for these.
+                for url, meta in self._extract_listing_metadata(resp.text).items():
+                    if url not in listing_metadata:
+                        listing_metadata[url] = meta
                 if not page_urls:
                     resp_len = len(resp.text)
                     title_match = re.search(r"<title[^>]*>(.*?)</title>", resp.text[:2000], re.IGNORECASE | re.DOTALL)
@@ -229,7 +320,9 @@ class LegacyScraper:
                 continue
 
             try:
-                obit = self._parse_detail_page(detail_resp.text, url)
+                obit = self._parse_detail_page(
+                    detail_resp.text, url, listing_meta=listing_metadata.get(url),
+                )
                 results.append(obit)
                 logger.info("[%s] Parsed: %s", self.site_id, obit.get("deceased_name", "unknown"))
             except Exception as e:

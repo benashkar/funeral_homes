@@ -405,3 +405,40 @@ def test_fh_text_no_match():
 def test_fh_text_empty():
     assert parse_funeral_home_from_text("") is None
     assert parse_funeral_home_from_text(None) is None
+
+
+# --- Next.js /person/ detail page tests (CreativeWork.about) ---
+
+CREATIVEWORK_OBIT_HTML = """
+<html><head>
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "CreativeWork",
+  "name": "Online Memorial for Janet S. Bick",
+  "mainEntityOfPage": "https://www.legacy.com/person/Janet-S.-Bick-61392356",
+  "url": "https://www.legacy.com/person/Janet-S.-Bick-61392356",
+  "about": {
+    "@type": "Person",
+    "name": "Janet S. Bick",
+    "givenName": "Janet",
+    "familyName": "Bick",
+    "birthDate": "1931-6-16",
+    "deathDate": "2026-5-16"
+  }
+}
+</script>
+</head><body></body></html>
+"""
+
+
+def test_parse_name_from_creativework_about():
+    """New /person/ pages nest the Person under CreativeWork.about — must be read."""
+    soup = BeautifulSoup(CREATIVEWORK_OBIT_HTML, "lxml")
+    assert parse_name(soup) == "Janet S. Bick"
+
+
+def test_parse_dates_from_creativework_about():
+    soup = BeautifulSoup(CREATIVEWORK_OBIT_HTML, "lxml")
+    dates = parse_dates(soup)
+    assert dates["death"] == date(2026, 5, 16)
