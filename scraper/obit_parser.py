@@ -24,6 +24,40 @@ _HEADLINE_SUFFIX_RE = re.compile(
     r'\s*(?:Obituary\s*)?(\d{4})?\s*-\s*.+$'
 )
 
+# Universal trailing-junk cleanup: strip from the first 19YY/20YY token onward,
+# whether or not a "Obituary" keyword or " - Funeral Home" tail follows it.
+# A real person name never contains a 4-digit year, so the year marks the
+# boundary between the actual name and any over-grabbed pollution.
+# Caught patterns:
+#   "Margaret Janet Morss Herren Obituary 2026"           → "Margaret Janet Morss Herren"
+#   "Glenn Curran McCabe 2026 - Brantley Phillips FH"     → "Glenn Curran McCabe"
+#   "Fred \"Butch\" Paxton, Jr. Obituary 2026 - Mem. Gard." → "Fred \"Butch\" Paxton, Jr."
+_NAME_TRAILING_JUNK_RE = re.compile(
+    r"\s+(?:Obituary\s+)?(?:19|20)\d{2}\b.*$",
+    re.IGNORECASE,
+)
+_TRAILING_OBITUARY_RE = re.compile(r"\s+Obituary\s*$", re.IGNORECASE)
+
+
+def _clean_extracted_name(name):
+    """Strip year + funeral-home pollution from a name string.
+
+    Applied to every name we extract — JSON-LD Person.name as well as
+    NewsArticle.headline — so the same junk pattern can't sneak in via
+    whichever code path Legacy.com happens to populate today.
+
+    Args:
+        name: Raw name string (or None).
+
+    Returns:
+        Cleaned name with whitespace trimmed. Empty string for None/empty.
+    """
+    if not name:
+        return ""
+    cleaned = _NAME_TRAILING_JUNK_RE.sub("", name)
+    cleaned = _TRAILING_OBITUARY_RE.sub("", cleaned)
+    return cleaned.strip()
+
 
 def _extract_jsonld(soup):
     """Extract all JSON-LD blocks from the page, keyed by @type.
@@ -73,12 +107,14 @@ def parse_name(soup):
     """
     blocks = _extract_jsonld(soup)
 
-    # Primary: Person schema has the canonical name
+    # Primary: Person schema has the canonical name. Legacy.com sometimes
+    # writes the headline format ("Name Obituary 2026") into Person.name,
+    # so apply the universal cleaner before returning.
     person = blocks.get("Person") or _creative_work_person(blocks)
     if person:
-        name = person.get("name") or ""
+        name = _clean_extracted_name(person.get("name") or "")
         if name:
-            return name.strip()
+            return name
 
     # Fallback: NewsArticle headline — may contain year + funeral home
     # e.g. "Leon G Kober Obituary 2026 - Phillip Funeral Home"
@@ -86,10 +122,11 @@ def parse_name(soup):
     if article:
         headline = article.get("headline") or ""
         if headline:
-            # Strip " Obituary YYYY - Funeral Home" or " YYYY - Funeral Home"
+            # Step 1: strip " Obituary YYYY - Funeral Home" / " YYYY - FH"
             cleaned = _HEADLINE_SUFFIX_RE.sub("", headline).strip()
-            # Also strip trailing " Obituary" if it wasn't caught above
-            cleaned = re.sub(r'\s+Obituary$', '', cleaned).strip()
+            # Step 2: universal trailing-junk cleanup catches what HEADLINE_SUFFIX
+            # missed (no dash, e.g. "Name Obituary 2026" or just "Name 2026").
+            cleaned = _clean_extracted_name(cleaned)
             if cleaned:
                 return cleaned
 

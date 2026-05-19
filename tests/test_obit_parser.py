@@ -11,7 +11,7 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from datetime import date
 from bs4 import BeautifulSoup
 
-from scraper.obit_parser import parse_name, parse_dates, parse_funeral_home, parse_funeral_home_detail, parse_obit_text, parse_photo_url, parse_death_place, parse_death_date_from_text, parse_funeral_home_from_text
+from scraper.obit_parser import parse_name, parse_dates, parse_funeral_home, parse_funeral_home_detail, parse_obit_text, parse_photo_url, parse_death_place, parse_death_date_from_text, parse_funeral_home_from_text, _clean_extracted_name
 
 
 # --- Fixtures: realistic Legacy.com JSON-LD structured data ---
@@ -442,3 +442,54 @@ def test_parse_dates_from_creativework_about():
     soup = BeautifulSoup(CREATIVEWORK_OBIT_HTML, "lxml")
     dates = parse_dates(soup)
     assert dates["death"] == date(2026, 5, 16)
+
+
+# --- _clean_extracted_name tests ---
+
+def test_clean_obituary_year_no_dash():
+    """Regression: 'Margaret Janet Morss Herren Obituary 2026' slipped past
+    the _HEADLINE_SUFFIX_RE (which required a dash). Universal cleaner catches it."""
+    assert _clean_extracted_name("Margaret Janet Morss Herren Obituary 2026") == "Margaret Janet Morss Herren"
+
+
+def test_clean_year_dash_funeral_home():
+    assert _clean_extracted_name("Glenn Curran McCabe 2026 - Brantley Phillips Funeral Home") == "Glenn Curran McCabe"
+
+
+def test_clean_obituary_year_dash_funeral_home():
+    assert _clean_extracted_name('Fred "Butch" Paxton, Jr. Obituary 2026 - Memorial Gardens Funeral Home') == 'Fred "Butch" Paxton, Jr.'
+
+
+def test_clean_just_year():
+    assert _clean_extracted_name("Jane Doe 2026") == "Jane Doe"
+
+
+def test_clean_19xx_year_works_too():
+    assert _clean_extracted_name("John Smith Obituary 1985 - Acme FH") == "John Smith"
+
+
+def test_clean_trailing_obituary_only():
+    assert _clean_extracted_name("Mary Jones Obituary") == "Mary Jones"
+
+
+def test_clean_already_clean_name_unchanged():
+    assert _clean_extracted_name("Janet S. Bick") == "Janet S. Bick"
+
+
+def test_clean_empty_input():
+    assert _clean_extracted_name("") == ""
+    assert _clean_extracted_name(None) == ""
+
+
+def test_parse_name_strips_obituary_year_from_person_block():
+    """If Person.name contains 'Name Obituary YYYY', the cleaner must strip it."""
+    POLLUTED_PERSON_HTML = """
+    <html><head>
+    <script type="application/ld+json">
+    {"@context":"https://schema.org","@type":"Person",
+     "name":"Margaret Janet Morss Herren Obituary 2026","deathDate":"2026-3-21"}
+    </script>
+    </head><body></body></html>
+    """
+    soup = BeautifulSoup(POLLUTED_PERSON_HTML, "lxml")
+    assert parse_name(soup) == "Margaret Janet Morss Herren"
