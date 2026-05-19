@@ -1,6 +1,6 @@
 # Legacy Obituary Scraper — Project Plan
 
-_Last updated: 2026-05-19 18:35 CT_
+_Last updated: 2026-05-19 18:50 CT_
 
 ## Active Incident — Legacy.com Next.js Migration (RESOLVED, verifying)
 
@@ -186,11 +186,27 @@ All 10 jobs still `running`, healthy:
 Compare: scraper-10 alone had 437 blocked markets pre-fix. Full runs take
 several hours; jobs will complete on their own and send per-run Telegrams.
 
-## Architecture (current)
-- 10 cron scrapers (scraper-1..10), staggered 06:00–10:00 UTC, all Virginia/Docker
-- Egress: 711proxy rotating US residential gateway via `PROXY_URL` env var
-- Health Telegram 21:00 UTC; CCR self-healing agent 22:00 UTC
-- See `CLAUDE.md` for full service IDs, schema, and env vars
+## Architecture (current — 2026-05-19)
+- **13 cron services** total, all Virginia/Docker, autoDeploy OFF (deploy
+  via Render API — `~/.local/bin/deploy_funeral_homes.py` batches them):
+  - `funeral-homes-scraper-1..10` — main daily scrapes, staggered 06:00–10:00 UTC
+  - `cr-rescue-scraper-1/2/3` — Cherry Road priority retries, 16:00–18:00 UTC
+- **Env-var baseline (every service):**
+  - `PROXY_URL=…711proxy…` (US-zone residential rotation, shared org account)
+  - `STATE_COOLDOWN=60` seconds between states
+  - `MAX_PROXY_ROTATIONS=6` per blocked request (fresh IP each retry)
+- **Telegram alerts at end of every run** — see [`_build_status()`](scheduler/run_daily.py)
+  for the status state machine. The silent-zero canary (PR #11) makes
+  parser-break incidents surface within hours instead of days.
+- Health Telegram 21:00 UTC; CCR self-healing agent 22:00 UTC.
+- See `CLAUDE.md` for full service IDs, schema, and env vars.
+
+## Operational notes
+- **Render `/v1/logs` does NOT serve cron-job runtime logs after the run
+  exits** — only build/deploy events surface. Verified 2026-05-19 by
+  polling for 3.5 hours. Don't poll the API to verify a one-off cron;
+  use `job.status` (succeeded/failed), the Telegram alert, or the Render
+  dashboard UI instead.
 
 ## Backlog
 - Step deferred: golf-tracker GitHub Actions sync (unrelated project, noted only)
