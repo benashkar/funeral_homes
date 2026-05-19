@@ -42,8 +42,28 @@ def _extract_jsonld(soup):
     return result
 
 
+def _creative_work_person(blocks):
+    """Return the Person object nested under CreativeWork.about, or None.
+
+    Next.js /person/ pages (2026 H2+) wrap the Person schema inside a
+    CreativeWork.about field rather than emitting a top-level Person block.
+    """
+    cw = blocks.get("CreativeWork")
+    if not cw:
+        return None
+    about = cw.get("about")
+    if isinstance(about, dict) and about.get("@type") == "Person":
+        return about
+    return None
+
+
 def parse_name(soup):
-    """Extract the deceased's name from JSON-LD Person block.
+    """Extract the deceased's name from JSON-LD.
+
+    Source order:
+      1. Person schema (legacy detail pages)
+      2. CreativeWork.about Person (new /person/ pages)
+      3. NewsArticle.headline with " YYYY - Funeral Home" cleanup
 
     Args:
         soup: BeautifulSoup object of a single obituary page.
@@ -54,7 +74,7 @@ def parse_name(soup):
     blocks = _extract_jsonld(soup)
 
     # Primary: Person schema has the canonical name
-    person = blocks.get("Person")
+    person = blocks.get("Person") or _creative_work_person(blocks)
     if person:
         name = person.get("name") or ""
         if name:
@@ -92,8 +112,9 @@ def parse_dates(soup):
     blocks = _extract_jsonld(soup)
     result = {"published": None, "death": None}
 
-    # Death date from Person schema
-    person = blocks.get("Person")
+    # Death date from Person schema (legacy detail pages OR
+    # CreativeWork.about on new /person/ pages).
+    person = blocks.get("Person") or _creative_work_person(blocks)
     if person:
         death_str = person.get("deathDate") or ""
         if death_str:
