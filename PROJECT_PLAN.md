@@ -1,6 +1,6 @@
 # Legacy Obituary Scraper — Project Plan
 
-_Last updated: 2026-05-19 15:45 CT_
+_Last updated: 2026-05-19 18:35 CT_
 
 ## Active Incident — Legacy.com Next.js Migration (RESOLVED, verifying)
 
@@ -75,7 +75,19 @@ run (cr-rescue-2). Applied via `~/.local/bin/set_proxy_and_tune.py`:
 | cr-rescue-scraper-1/2/3 | `PROXY_URL=…711proxy…` set (was unset) |
 | funeral-homes-scraper-1..10 | `STATE_COOLDOWN=15→60`, `MAX_PROXY_ROTATIONS=3→6` |
 
-### Status — RESOLVED & VERIFYING 2026-05-19 15:45 CT
+### Follow-up shipped — Silent-zero canary (PR #11, 2026-05-19 18:30 CT)
+The original 2026-05-17 alert (`Status: OK, Markets: 22, Found: 0, Errors: 0,
+Blocked: 0`) sat for two days before anyone investigated because nothing in
+the message screamed "broken." Added `_build_status()` in
+`scheduler/run_daily.py` that returns
+`WARNING: silent zero — possible parser break` when `total_found == 0` and
+`markets_count >= 5` (threshold avoids false positives on small batches).
+Priority: BLOCKED >= 50% still wins (the cause is already named), then
+ERRORS, then this new WARNING, then DEGRADED, then OK. Unit-tested with 9
+cases pinning the 2026-05-17 incident shape plus boundary conditions.
+Merged + redeployed to all 13 services on commit `1fb4c9ed`.
+
+### Status — RESOLVED & VERIFYING 2026-05-19 18:35 CT
 - [x] Root cause identified and verified live
 - [x] PR #7 (URL + harvest) merged + deployed to all 13 services
 - [x] PR #9 (name cleanup) merged + redeployed
@@ -88,10 +100,14 @@ run (cr-rescue-2). Applied via `~/.local/bin/set_proxy_and_tune.py`:
       main scrapers
 - [x] One-off run on cr-rescue-scraper-2 (oh,ks) post-tuning: exit-0 in
       6 min (was 24-min retry storm before fix)
+- [x] Silent-zero canary deployed (PR #11) — future format breaks page
+      via `WARNING:` Telegram instead of silent Status:OK
 - [ ] Confirm tomorrow's scheduled run shows block rate <30% across all
       13 services
 - [ ] Watch for "Obituary YYYY" no-dash polluted names in next-day audit
       — should be zero after PR #9
+- [ ] If a real silent-zero ever recurs, confirm the canary fires by
+      checking the Telegram alert wording (should start with `WARNING:`)
 
 ### Lessons / process notes
 - **Wrong-repo trap**: First attempted fix was opened against
@@ -179,9 +195,12 @@ several hours; jobs will complete on their own and send per-run Telegrams.
 ## Backlog
 - Step deferred: golf-tracker GitHub Actions sync (unrelated project, noted only)
 - Consider lowering scraper-10's 471-market load — full runs take 6+ hours
-- **Zero-found canary** — dashboard alert when a state batch returns
-  `Found: 0` on a market whose 7-day median is >0. Would have surfaced
-  the 2026-05-17 Next.js incident hours instead of days late.
+- ~~**Zero-found canary**~~ — _shipped 2026-05-19 (PR #11)_. Now emits
+  `WARNING: silent zero` Telegram when a batch returns Found=0 with
+  Markets>=5 and no blocks/errors. Per-market 7-day median check
+  could still be a follow-up if false-negatives appear (e.g. a
+  legitimately-zero state batch hides a real parser break in one
+  of its markets).
 - **Auto-recovery of /person/ pages without listing context** — if a
   detail-page fetch for a /person/ URL happens without listing metadata
   (e.g. backfill re-fetches), funeral_home + obit_text will be NULL.
