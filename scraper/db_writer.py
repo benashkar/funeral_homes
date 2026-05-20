@@ -428,3 +428,73 @@ def log_run(conn, site_id, found, new, errors=None):
     cursor.execute(INSERT_LOG_SQL, params)
     conn.commit()
     cursor.close()
+
+
+# Quiet-markets canary: per-market silent-zero detection. Catches the case
+# where ONE market silently goes to zero while its siblings produce data,
+# which the batch-level silent-zero check can't see (the batch total is
+# non-zero, so Status stays OK).
+#
+# A market is "quiet" if: today's obits_found == 0 AND in the last 7 days
+# (today excluded) it had obits_found > 0 on at least 3 distinct dates.
+# The 3-active-day floor avoids flagging legitimately-dormant markets
+# (rural counties where a zero day is normal).
+
+
+def find_quiet_markets(conn, site_ids, today=None):
+    """Return markets that scraped today=0 but were active in the last 7 days.
+
+    Used by `scheduler.run_daily` to add a `Quiet markets:` line to the
+    Telegram alert — flagging a per-market regression that the batch-level
+    silent-zero canary can't see.
+
+    Args:
+        conn: MySQL connection.
+        site_ids: iterable of site_id strings scraped in this run. Filters
+            the query so we don't accidentally surface unrelated markets.
+        today: optional override for the run date (default: date.today()).
+
+    Returns:
+        List of (site_id, avg_7d, active_days) tuples sorted by avg_7d
+        descending. Empty list means no quiet markets — the typical case.
+        Capped at 25 entries to keep the Telegram alert readable.
+    """
+    site_ids = list(site_ids or [])
+    if not site_ids:
+        return []
+    if today is None:
+        today = date.today()
+
+    placeholders = ",".join(["%s"] * len(site_ids))
+    # Placeholders bound in order: today (zero-today filter), site_ids[*]
+    # (IN clause), today (BETWEEN low), today (BETWEEN high).
+    sql = f"""
+        SELECT
+            today_log.site_id,
+            ROUND(AVG(hist.obits_found), 1) AS avg_7d,
+            COUNT(*) AS active_days
+        FROM (
+            SELECT site_id, obits_found
+            FROM scrape_log
+            WHERE run_date = %s
+              AND obits_found = 0
+              AND site_id IN ({placeholders})
+        ) AS today_log
+        JOIN scrape_log AS hist
+          ON hist.site_id = today_log.site_id
+         AND hist.run_date BETWEEN DATE_SUB(%s, INTERVAL 7 DAY)
+                               AND DATE_SUB(%s, INTERVAL 1 DAY)
+         AND hist.obits_found > 0
+        GROUP BY today_log.site_id
+        HAVING active_days >= 3
+        ORDER BY avg_7d DESC
+        LIMIT 25
+    """
+    args = [today, *site_ids, today, today]
+
+    cursor = conn.cursor()
+    try:
+        cursor.execute(sql, args)
+        return [(row[0], float(row[1]), int(row[2])) for row in cursor.fetchall()]
+    finally:
+        cursor.close()

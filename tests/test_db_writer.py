@@ -7,7 +7,7 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from unittest.mock import MagicMock, patch
 from datetime import date
 
-from scraper.db_writer import upsert_obit, batch_insert_obits, log_run, url_exists, get_known_urls_for_site
+from scraper.db_writer import upsert_obit, batch_insert_obits, log_run, url_exists, get_known_urls_for_site, find_quiet_markets
 
 
 def _mock_conn(rowcount=1, fetchone_result=None, fetchall_result=None):
@@ -95,3 +95,43 @@ def test_log_run():
     log_run(conn, "oh-franklin", found=5, new=3, errors=None)
     cursor.execute.assert_called_once()
     conn.commit.assert_called_once()
+
+
+# --- find_quiet_markets ---
+
+def test_find_quiet_markets_returns_results():
+    """SQL execute is called with today + site_ids + today + today."""
+    conn, cursor = _mock_conn(fetchall_result=[
+        ("oh-monroe", 12.4, 6),
+        ("oh-paulding", 8.0, 5),
+    ])
+    today = date(2026, 5, 19)
+    result = find_quiet_markets(conn, ["oh-monroe", "oh-paulding", "oh-defiance"], today=today)
+    assert result == [
+        ("oh-monroe", 12.4, 6),
+        ("oh-paulding", 8.0, 5),
+    ]
+    # Args: today + 3 site_ids + today + today = 6 args
+    args = cursor.execute.call_args[0]
+    sql, params = args[0], args[1]
+    assert params[0] == today
+    assert params[1:4] == ["oh-monroe", "oh-paulding", "oh-defiance"]
+    assert params[4] == today and params[5] == today
+    # Sanity check the SQL has the right shape
+    assert "obits_found = 0" in sql
+    assert "active_days >= 3" in sql
+    assert "LIMIT 25" in sql
+
+
+def test_find_quiet_markets_no_sites_returns_empty():
+    """Empty site_ids must short-circuit — no SQL executed, no errors."""
+    conn, cursor = _mock_conn()
+    assert find_quiet_markets(conn, []) == []
+    cursor.execute.assert_not_called()
+
+
+def test_find_quiet_markets_none_quiet():
+    """When no markets match the criteria, returns empty list."""
+    conn, cursor = _mock_conn(fetchall_result=[])
+    result = find_quiet_markets(conn, ["oh-franklin"], today=date(2026, 5, 19))
+    assert result == []
