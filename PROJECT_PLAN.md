@@ -1,6 +1,6 @@
 # Legacy Obituary Scraper — Project Plan
 
-_Last updated: 2026-05-19 20:50 CT_
+_Last updated: 2026-05-19 21:35 CT_
 
 ## Active Incident — Legacy.com Next.js Migration (RESOLVED, verifying)
 
@@ -87,6 +87,21 @@ ERRORS, then this new WARNING, then DEGRADED, then OK. Unit-tested with 9
 cases pinning the 2026-05-17 incident shape plus boundary conditions.
 Merged + redeployed to all 13 services on commit `1fb4c9ed`.
 
+### Follow-up shipped — Per-market quiet canary (PR #16, 2026-05-19 21:30 CT)
+PRs #11 + #14 catch batch-level regressions. PR #16 catches the case
+where ONE market silently goes to zero while siblings keep producing
+data (batch total stays non-zero → previous canaries don't fire).
+- New `find_quiet_markets()` SQL helper joins today's `scrape_log`
+  rows where `obits_found = 0` against the prior 7 days for the same
+  site_id. A market is reported quiet only if it had `obits_found > 0`
+  on >= 3 of the prior 7 days — the 3-day floor avoids flagging
+  legitimately-dormant rural counties.
+- `run_daily.run()` appends a `Quiet markets: site_id(avg=N.N), ...
+  +K more` line to the Telegram alert when any are found. Capped at
+  25 entries; preview shows the top 5 by 7-day average.
+- 3 new tests (happy path, empty-site_ids short-circuit, no-quiet case).
+- Merged + redeployed to all 13 services on commit `d8725e4f`.
+
 ### Follow-up shipped — Missing-funeral-home canary (PR #14, 2026-05-19 20:45 CT)
 The silent-zero canary doesn't catch a different shape that's specific to
 the new `/person/` URL flow: listing-page result-card HTML is the **only**
@@ -122,6 +137,8 @@ become NULL for every obit. PR #14 plugs that gap:
       via `WARNING:` Telegram instead of silent Status:OK
 - [x] Missing-funeral-home canary deployed (PR #14) — catches
       listing-metadata regression that silent-zero would miss
+- [x] Per-market quiet canary deployed (PR #16) — catches single-market
+      silent zeros within a healthy batch
 - [ ] Confirm tomorrow's scheduled run shows block rate <30% across all
       13 services
 - [ ] Watch for "Obituary YYYY" no-dash polluted names in next-day audit
@@ -233,10 +250,11 @@ several hours; jobs will complete on their own and send per-run Telegrams.
 - Consider lowering scraper-10's 471-market load — full runs take 6+ hours
 - ~~**Zero-found canary**~~ — _shipped 2026-05-19 (PR #11)_. Now emits
   `WARNING: silent zero` Telegram when a batch returns Found=0 with
-  Markets>=5 and no blocks/errors. Per-market 7-day median check
-  could still be a follow-up if false-negatives appear (e.g. a
-  legitimately-zero state batch hides a real parser break in one
-  of its markets).
+  Markets>=5 and no blocks/errors.
+- ~~**Per-market 7-day check**~~ — _shipped 2026-05-19 (PR #16)_.
+  `find_quiet_markets()` flags any single market that scraped 0 today
+  but had >=3 active days in the prior 7. Surfaces as a
+  `Quiet markets:` line in the Telegram alert.
 - ~~**Missing-funeral-home canary**~~ — _shipped 2026-05-19 (PR #14)_.
   Now emits `WARNING: N% missing funeral_home` when total_found >= 50
   and >= 70% of obits come back with funeral_home=NULL. Guards the
