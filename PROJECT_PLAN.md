@@ -1,6 +1,6 @@
 # Legacy Obituary Scraper — Project Plan
 
-_Last updated: 2026-05-19 21:35 CT_
+_Last updated: 2026-05-19 23:15 CT (end of session)_
 
 ## Active Incident — Legacy.com Next.js Migration (RESOLVED, verifying)
 
@@ -244,6 +244,20 @@ several hours; jobs will complete on their own and send per-run Telegrams.
   polling for 3.5 hours. Don't poll the API to verify a one-off cron;
   use `job.status` (succeeded/failed), the Telegram alert, or the Render
   dashboard UI instead.
+
+## End-of-session snapshot (2026-05-19 23:15 CT)
+- **PRs merged this session**: 9 functional/docs (#7 parser, #8 backfill,
+  #9 name cleanup, #10/#12/#13/#15/#17 docs, #11 silent-zero canary,
+  #14 missing-fh canary, #16 per-market quiet canary).
+- **Production state**: all 13 scrapers on commit `d8725e4f`, three
+  Telegram-status canaries armed, `PROXY_URL` + tuned `STATE_COOLDOWN`
+  + `MAX_PROXY_ROTATIONS` set across the fleet, deceased_name backfill
+  applied.
+- **Test count**: 122 unit tests pass.
+- **First production exercise**: tomorrow's 06–10 UTC scheduled cron
+  runs. Telegram alerts will surface the new canaries' real-world
+  behavior; the previously-silent 2026-05-17 incident would now page
+  as `WARNING: silent zero` if it recurred.
 
 ## Backlog
 - Step deferred: golf-tracker GitHub Actions sync (unrelated project, noted only)
