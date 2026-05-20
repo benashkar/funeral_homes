@@ -591,6 +591,145 @@ def create_app():
             logger.error("Health route error: %s", e)
             return f"<h1>Database Error</h1><p>{e}</p>", 503
 
+    def _scrape_health_data():
+        """Shared query helper for /api/scrape-health and /scrape-health.
+
+        Returns (days, states_rows, quiet_markets) where:
+        - days: list of the last 7 calendar dates (date objects, newest first).
+        - states_rows: list of {state, daily_counts} dicts, daily_counts
+          aligned with `days` and zero-filled for missing date/state pairs.
+        - quiet_markets: list of {site_id, last_7d_avg, active_days,
+          last_active} dicts from find_quiet_markets (today=0 but historically
+          active). last_active is a date or None.
+        """
+        from datetime import date as _date
+        from scraper.db_writer import find_quiet_markets
+
+        today = _date.today()
+        days = [today - timedelta(days=i) for i in range(7)]
+        oldest = days[-1]
+
+        conn = _get_conn()
+        try:
+            cur = conn.cursor(dictionary=True)
+            cur.execute(
+                """
+                SELECT site_id, run_date, SUM(obits_found) AS found
+                FROM scrape_log
+                WHERE run_date >= %s
+                GROUP BY site_id, run_date
+                """,
+                (oldest,),
+            )
+            rows = cur.fetchall()
+
+            # Aggregate per (state, date) → found.
+            state_daily = {}
+            site_ids_today = []
+            for r in rows:
+                site_id = r["site_id"] or ""
+                state = site_id.split("-")[0].upper() if site_id else ""
+                if not state:
+                    continue
+                run_date = r["run_date"]
+                found = int(r["found"] or 0)
+                bucket = state_daily.setdefault(state, {})
+                bucket[run_date] = bucket.get(run_date, 0) + found
+                if run_date == today:
+                    site_ids_today.append(site_id)
+
+            states_rows = []
+            for state in sorted(state_daily.keys()):
+                counts = [int(state_daily[state].get(d, 0)) for d in days]
+                states_rows.append({"state": state, "daily_counts": counts})
+
+            # last_active per site_id (most recent run_date with found > 0)
+            cur.execute(
+                """
+                SELECT site_id, MAX(run_date) AS last_active
+                FROM scrape_log
+                WHERE obits_found > 0
+                GROUP BY site_id
+                """
+            )
+            last_active_map = {r["site_id"]: r["last_active"] for r in cur.fetchall()}
+
+            cur.close()
+
+            quiet = find_quiet_markets(conn, site_ids_today, today=today)
+            quiet_markets = []
+            for site_id, avg_7d, active_days in quiet:
+                quiet_markets.append({
+                    "site_id": site_id,
+                    "last_7d_avg": float(avg_7d),
+                    "active_days": int(active_days),
+                    "last_active": last_active_map.get(site_id),
+                })
+        finally:
+            conn.close()
+
+        return days, states_rows, quiet_markets
+
+    @app.route("/api/scrape-health")
+    def api_scrape_health():
+        try:
+            days, states_rows, quiet_markets = _scrape_health_data()
+            return jsonify({
+                "as_of": datetime.now(timezone.utc).isoformat(),
+                "days": [d.isoformat() for d in days],
+                "states": states_rows,
+                "quiet_markets": [
+                    {
+                        "site_id": q["site_id"],
+                        "last_7d_avg": q["last_7d_avg"],
+                        "active_days": q["active_days"],
+                        "last_active": q["last_active"].isoformat() if q["last_active"] else None,
+                    }
+                    for q in quiet_markets
+                ],
+            })
+        except Exception as e:
+            logger.error("api_scrape_health error: %s", e)
+            return jsonify({"error": str(e)}), 503
+
+    @app.route("/scrape-health")
+    def scrape_health_view():
+        try:
+            days, states_rows, quiet_markets = _scrape_health_data()
+            # Pre-compute per-state median + cell classes so the template stays simple.
+            rows = []
+            for sr in states_rows:
+                counts = sr["daily_counts"]
+                sorted_nonzero = sorted([c for c in counts if c > 0])
+                if sorted_nonzero:
+                    mid = len(sorted_nonzero) // 2
+                    if len(sorted_nonzero) % 2 == 1:
+                        median = sorted_nonzero[mid]
+                    else:
+                        median = (sorted_nonzero[mid - 1] + sorted_nonzero[mid]) / 2.0
+                else:
+                    median = 0
+                cells = []
+                for c in counts:
+                    if c == 0:
+                        cls = "cell-red"
+                    elif median and c < 0.3 * median:
+                        cls = "cell-yellow"
+                    else:
+                        cls = "cell-green"
+                    cells.append({"count": c, "cls": cls})
+                rows.append({"state": sr["state"], "cells": cells})
+
+            return render_template(
+                "scrape_health.html",
+                days=days,
+                rows=rows,
+                quiet_markets=quiet_markets,
+            )
+        except Exception as e:
+            logger.error("scrape_health_view error: %s", e)
+            return f"<h1>Database Error</h1><p>{e}</p>", 503
+
     @app.route("/health-status.json")
     def health_status_json():
         """Structured health snapshot for the Layer-3 diagnostic agent.

@@ -1,0 +1,73 @@
+{% extends "base.html" %}
+{% block title %}Scrape Health — CR Obituaries{% endblock %}
+{% block content %}
+<style>
+    .sh-heatmap { border-collapse: collapse; background: white; margin-bottom: 24px; }
+    .sh-heatmap th, .sh-heatmap td { padding: 6px 10px; text-align: center; font-size: 13px; border: 1px solid #eee; }
+    .sh-heatmap th { background: #34495e; color: #fff; }
+    .sh-heatmap th.sh-state, .sh-heatmap td.sh-state { text-align: left; font-weight: 600; }
+    .cell-red { background: #f8d7da; color: #721c24; }
+    .cell-yellow { background: #fff3cd; color: #856404; }
+    .cell-green { background: #d4edda; color: #155724; }
+    .sh-quiet { background: white; padding: 16px; border-radius: 8px; box-shadow: 0 1px 3px rgba(0,0,0,0.1); }
+    .sh-quiet table { margin-top: 8px; }
+    .sh-empty { color: #888; font-style: italic; }
+</style>
+
+<h2>Scrape Health (Last 7 Days)</h2>
+<p style="color:#666; margin-bottom:16px;">
+    Per-state obits-found counts. Red = 0, yellow = below 30% of state's 7-day median, green = healthy.
+    See <a href="/api/scrape-health">JSON</a>.
+</p>
+
+<table class="sh-heatmap">
+    <thead>
+        <tr>
+            <th class="sh-state">State</th>
+            {% for d in days %}<th>{{ d.strftime("%m/%d") }}</th>{% endfor %}
+        </tr>
+    </thead>
+    <tbody>
+        {% for row in rows %}
+        <tr>
+            <td class="sh-state">{{ row.state }}</td>
+            {% for c in row.cells %}<td class="{{ c.cls }}">{{ c.count }}</td>{% endfor %}
+        </tr>
+        {% endfor %}
+        {% if not rows %}
+        <tr><td colspan="{{ days|length + 1 }}" class="sh-empty">No scrape data in last 7 days</td></tr>
+        {% endif %}
+    </tbody>
+</table>
+
+<div class="sh-quiet">
+    <strong>Quiet markets</strong>
+    <div style="color:#666; font-size:13px; margin-top:4px;">
+        Today found 0 but had &ge; 3 active days in the prior 7.
+    </div>
+    {% if quiet_markets %}
+    <table>
+        <thead>
+            <tr>
+                <th>Market</th>
+                <th>7-day Avg</th>
+                <th>Active Days</th>
+                <th>Last Active</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for q in quiet_markets %}
+            <tr>
+                <td>{{ q.site_id }}</td>
+                <td>{{ "%.1f"|format(q.last_7d_avg) }}</td>
+                <td>{{ q.active_days }}</td>
+                <td>{{ q.last_active or "—" }}</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+    {% else %}
+    <p class="sh-empty" style="margin-top:8px;">No quiet markets — every today=0 market was also quiet in the prior week.</p>
+    {% endif %}
+</div>
+{% endblock %}
