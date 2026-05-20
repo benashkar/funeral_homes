@@ -46,21 +46,36 @@ PRIORITY_ONLY = os.environ.get("PRIORITY_ONLY", "").lower() in ("true", "1", "ye
 # blocks or errors, treat the run as suspect (almost always a parser break).
 SILENT_ZERO_MARKETS_THRESHOLD = 5
 
+# Missing-funeral-home canary: the listing-metadata harvest is the *only*
+# source of funeral_home + obit_text for /person/ URLs on Legacy.com's new
+# (2026 H2) Next.js layout. If a future markup change strips the result-card
+# data we'd silently capture URLs+names but lose funeral_home for everyone.
+# This threshold catches that pattern without false-firing on tiny batches
+# or on the natural ~5% missing-FH rate of normal runs.
+MISSING_FH_OBITS_THRESHOLD = 50
+MISSING_FH_RATIO_THRESHOLD = 70  # percent
 
-def _build_status(markets_count, total_found, blocked, errors):
+
+def _build_status(markets_count, total_found, blocked, errors, obits_missing_fh=0):
     """Build the Telegram status string from run counters.
 
     Priority order:
       1. BLOCKED — proxy/IP issue dominates (>=50% block rate)
       2. ERRORS  — exceptions raised during the run
-      3. WARNING — silent zero, the high-value canary for parser breaks
-      4. DEGRADED — some blocks but data still flowed
-      5. OK
+      3. WARNING:silent zero — high-value canary for parser breaks
+      4. WARNING:missing funeral_home — canary for listing-metadata regression
+      5. DEGRADED — some blocks but data still flowed
+      6. OK
 
     The silent-zero check is the lesson from the 2026-05-17 incident: 22
     markets returned Found=0 with Errors=0 and Blocked=0 for two days
     before anyone noticed, because Status: OK looked benign. Now that
     same pattern produces a loud WARNING line.
+
+    The missing-funeral-home check guards the 2026-05-19 follow-up:
+    /person/ URLs depend on listing-page result-card HTML for
+    funeral_home + obit_text. If Legacy.com tweaks the result-card
+    markup, URLs still flow but those fields silently drop to NULL.
 
     Pure function so it can be unit-tested without standing up the
     whole scraper.
@@ -72,6 +87,13 @@ def _build_status(markets_count, total_found, blocked, errors):
         return f"ERRORS: {errors}"
     if total_found == 0 and markets_count >= SILENT_ZERO_MARKETS_THRESHOLD:
         return "WARNING: silent zero — possible parser break"
+    if total_found >= MISSING_FH_OBITS_THRESHOLD:
+        missing_pct = obits_missing_fh * 100 // total_found
+        if missing_pct >= MISSING_FH_RATIO_THRESHOLD:
+            return (
+                f"WARNING: {missing_pct}% missing funeral_home — "
+                "listing-metadata harvest may be broken"
+            )
     if blocked:
         return f"DEGRADED: {blocked} blocked"
     return "OK"
@@ -235,6 +257,11 @@ def scrape_market(market, session):
                 obit["s3_photo_url_16x9"] = None
 
         new_count = batch_insert_obits(conn, obits, site_id)
+        # Count obits where the listing-metadata harvest + detail-page
+        # parsing both came back without a funeral_home. Used by the
+        # missing-funeral-home canary to catch a future listing-format
+        # change that silently strips funeral_home data.
+        missing_fh = sum(1 for o in obits if not o.get("funeral_home"))
         # Log diagnostic info when listing page returned 0 links
         diag = scraper._last_listing_diag if found == 0 else None
         log_run(conn, site_id, found, new_count, errors=diag)
@@ -243,7 +270,7 @@ def scrape_market(market, session):
         # Surface a blocked listing as an error so the in-memory counter
         # (used by the per-scraper Telegram summary) doesn't report "0 errors"
         # when every market was IP-blocked.
-        return (site_id, found, new_count, diag)
+        return (site_id, found, new_count, diag, missing_fh)
 
     except Exception as e:
         logger.error("[%s] Failed: %s", site_id, e)
@@ -253,7 +280,7 @@ def scrape_market(market, session):
             conn.close()
         except Exception:
             pass
-        return (site_id, 0, 0, str(e))
+        return (site_id, 0, 0, str(e), 0)
 
 
 def _run_auto_backfill():
@@ -334,6 +361,7 @@ def run():
     session = create_session()
     total_found = 0
     total_new = 0
+    total_missing_fh = 0
     errors = 0
     blocked = 0
 
@@ -348,9 +376,10 @@ def run():
         state_markets = sorted(state_markets, key=lambda m: not m.get("priority", False))
 
         for market in state_markets:
-            site_id, found, new, error = scrape_market(market, session)
+            site_id, found, new, error, missing_fh = scrape_market(market, session)
             state_found += found
             state_new += new
+            total_missing_fh += missing_fh
             if error and error.startswith("listing_fetch_failed"):
                 state_blocked += 1
             elif error:
@@ -392,6 +421,7 @@ def run():
         total_found=total_found,
         blocked=blocked,
         errors=errors,
+        obits_missing_fh=total_missing_fh,
     )
     msg = (
         f"<b>Obituary Scraper — {states_label}</b>\n"
