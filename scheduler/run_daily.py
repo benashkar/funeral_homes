@@ -22,7 +22,7 @@ load_dotenv()
 
 from scraper.legacy_scraper import LegacyScraper
 from scraper.newspaper_direct import fetch_newspaper_obit_urls, parse_newspaper_obit_detail
-from scraper.db_writer import get_connection, batch_insert_obits, log_run, get_known_urls_for_site, flag_bad_and_dupes, upsert_funeral_home, enrich_funeral_home, ensure_schema
+from scraper.db_writer import get_connection, batch_insert_obits, log_run, get_known_urls_for_site, flag_bad_and_dupes, upsert_funeral_home, enrich_funeral_home, ensure_schema, find_quiet_markets
 from utils.logger import get_logger
 from utils.rate_limiter import create_session, MAX_RETRIES
 from utils.s3_uploader import upload_photo
@@ -403,6 +403,15 @@ def run():
     # Post-scrape cleanup
     conn = get_connection()
     bad, duped = flag_bad_and_dupes(conn)
+    # Per-market silent-zero check — markets that scraped 0 today but had
+    # >=3 active days in the prior week. Catches single-market regressions
+    # the batch-level silent-zero canary can't see.
+    site_ids = [m["site_id"] for m in markets]
+    try:
+        quiet_markets = find_quiet_markets(conn, site_ids)
+    except Exception as e:
+        logger.warning("[--] quiet-market query failed: %s", e)
+        quiet_markets = []
     conn.close()
 
     # Auto-backfill: parse missing death dates and funeral homes from text
@@ -431,6 +440,15 @@ def run():
     )
     if backfill_fixed:
         msg += f"\nBackfill: {backfill_fixed}"
+    if quiet_markets:
+        # Show up to 5 in-line; full list (capped at 25) goes in scrape_log
+        # for later inspection. Format: "site_id(avg=N.N)" so the reader
+        # can quickly see which markets matter (high avg = real regression).
+        preview = ", ".join(
+            f"{sid}(avg={avg})" for sid, avg, _ in quiet_markets[:5]
+        )
+        suffix = "" if len(quiet_markets) <= 5 else f" +{len(quiet_markets) - 5} more"
+        msg += f"\nQuiet markets: {preview}{suffix}"
     telegram_send(msg)
 
 
