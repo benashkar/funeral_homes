@@ -1,6 +1,6 @@
 # Legacy Obituary Scraper — Project Plan
 
-_Last updated: 2026-05-20 11:00 CT (post-merge of dashboard view + scraper-10 split)_
+_Last updated: 2026-05-20 13:55 CT (post scraper-1 split + name-cleanup hardening + live-verify)_
 
 ## Active Incident — Legacy.com Next.js Migration (RESOLVED, verifying)
 
@@ -278,9 +278,46 @@ several hours; jobs will complete on their own and send per-run Telegrams.
   fresh 711proxy credits + the env-var tuning, tomorrow's wave is
   the clean reading. If block rate drops below ~20% the tuning is
   sufficient.
-- **Validation in flight:** one-off run on cr-rescue-2 (oh,ks,
-  22 markets) triggered post-proxy-reload. Compare point is
-  yesterday's 19:53 UTC `Markets: 22 | Found: 0 | Blocked: 22` run.
+- **Proxy + tuning validated 2026-05-20 17:17 UTC:** cr-rescue-2 (oh,ks,
+  22 markets) one-off ran 59 minutes — vs yesterday's 6-min fast-fail
+  on banned IPs OR 24-min retry-storm pre-tuning. A 59-min runtime is
+  the signature of a real working scrape (~2.5min/market). The
+  reloaded 711proxy account + STATE_COOLDOWN=60 + MAX_PROXY_ROTATIONS=6
+  is sufficient. Compare point: yesterday's 19:53 UTC
+  `Markets: 22 | Found: 0 | Blocked: 22` run.
+- **scraper-1 also split (2026-05-20 PM):** overload-audit agent
+  flagged scraper-1 as the only remaining service over the 300-mk
+  SPLIT threshold (304 markets, va,id,wa,nm,ak,ut, ~7.6h est). Split
+  into:
+    - scraper-1 (`crn-d6li6f5m5p6s73chtqh0`) — `SCRAPE_STATES=va,ak,ut`, 188 markets, `0 6 * * *`
+    - scraper-12 (`crn-d8707mjtqb8s7381kfhg`, NEW) — `SCRAPE_STATES=id,wa,nm`, 116 markets, `0 12 * * *`
+  Fleet now totals **15 services** (12 main + 3 cr-rescue). Audit
+  report at `C:\Users\cashk\tmp-clone\fh_overload_audit\OVERLOAD_AUDIT.md`;
+  scrapers 2 and 3 are the next-most-likely to need splitting (298 and
+  278 markets respectively) but stay in the WATCH band for now.
+- **Name-cleanup hardening (PR #22, 2026-05-20 13:55 CT):** defensive
+  variants added for 7 plausible pollution shapes Legacy.com might
+  emit (life-span in parens, leading `OBITUARY:`, em-dash separator,
+  comma-year-range, dash-separated life span, dash+FH without year,
+  all-lowercase). `_clean_extracted_name` extended with a 4-step
+  pipeline + FH-keyword whitelist for the no-year case. Guardrails
+  pinned: legitimate names like `Smith, John` / `John Smith, Jr.` /
+  `Mary-Lou O'Brien` / `José García-López` pass through unchanged.
+  Tests: 137 pass (+10 new). Deployed to all 14 scrapers on commit
+  `88f64731`.
+- **Live verification across 10 metros (2026-05-20):** sub-agent ran
+  the post-fix parser against ny-erie, ca-los-angeles, fl-miami-dade,
+  tx-harris, il-cook, pa-philadelphia, ga-fulton, mi-wayne,
+  mn-hennepin, wa-king. Verdict: **all 10 markets healthy.** Key
+  finding: the Next.js migration is partial — 5/10 metros serve the
+  new `/person/` format (LA, Miami, Cook, Philly, Wayne; 100%
+  listing-meta coverage), the other 5 still serve the legacy
+  `/us/obituaries/.../name/` shape (NY/Erie, Harris, Fulton, Hennepin,
+  King) which doesn't need listing-meta because detail-page JSON-LD
+  still carries name + body + funeralHome. Both code paths are
+  production-ready. Minor follow-up: `tx-harris` + `ga-fulton` are
+  missing from `config/markets.json` despite being major metros —
+  worth adding.
 - **Test count**: 127 unit tests pass (122 + 5 new in PR #20).
 - **First production exercise of canaries**: tomorrow's 06–11 UTC
   scheduled cron runs (scraper-1 through scraper-11). The
@@ -293,10 +330,15 @@ several hours; jobs will complete on their own and send per-run Telegrams.
 - Step deferred: golf-tracker GitHub Actions sync (unrelated project, noted only)
 - ~~**Lower scraper-10's 471-market load**~~ — _shipped 2026-05-20_. Split
   into scraper-10 (243 mk, fl,wi,ca,sc) + scraper-11 (228 mk, la,mt,wv,nd).
-- **Audit the other 5 scrapers for similar overload** — sub-agent flagged
-  this as a side-note while splitting scraper-10. None examined yet.
-  Next step: pull per-scraper market counts and runtime histograms to
-  decide whether scrapers 1-9 also need splitting.
+- ~~**Audit the other 5 scrapers for similar overload**~~ — _done
+  2026-05-20_. Found: only scraper-1 was over the SPLIT threshold
+  (now split). Scrapers 2 and 3 are the next-most-likely to tip but
+  still in the WATCH band. Audit report at
+  `C:\Users\cashk\tmp-clone\fh_overload_audit\OVERLOAD_AUDIT.md`.
+- **Add tx-harris + ga-fulton to `config/markets.json`** — live-verify
+  agent found these major metros are not registered, even though their
+  Legacy.com pages work fine. Synthesized slugs returned 39 / 42 URLs
+  on probe. Low-effort coverage win.
 - ~~**Zero-found canary**~~ — _shipped 2026-05-19 (PR #11)_. Now emits
   `WARNING: silent zero` Telegram when a batch returns Found=0 with
   Markets>=5 and no blocks/errors.
