@@ -1,6 +1,6 @@
 # Legacy Obituary Scraper — Project Plan
 
-_Last updated: 2026-05-19 23:15 CT (end of session)_
+_Last updated: 2026-05-20 11:00 CT (post-merge of dashboard view + scraper-10 split)_
 
 ## Active Incident — Legacy.com Next.js Migration (RESOLVED, verifying)
 
@@ -245,23 +245,58 @@ several hours; jobs will complete on their own and send per-run Telegrams.
   use `job.status` (succeeded/failed), the Telegram alert, or the Render
   dashboard UI instead.
 
-## End-of-session snapshot (2026-05-19 23:15 CT)
-- **PRs merged this session**: 9 functional/docs (#7 parser, #8 backfill,
-  #9 name cleanup, #10/#12/#13/#15/#17 docs, #11 silent-zero canary,
-  #14 missing-fh canary, #16 per-market quiet canary).
-- **Production state**: all 13 scrapers on commit `d8725e4f`, three
-  Telegram-status canaries armed, `PROXY_URL` + tuned `STATE_COOLDOWN`
-  + `MAX_PROXY_ROTATIONS` set across the fleet, deceased_name backfill
-  applied.
-- **Test count**: 122 unit tests pass.
-- **First production exercise**: tomorrow's 06–10 UTC scheduled cron
-  runs. Telegram alerts will surface the new canaries' real-world
-  behavior; the previously-silent 2026-05-17 incident would now page
-  as `WARNING: silent zero` if it recurred.
+## End-of-session snapshot (2026-05-19 → 2026-05-20)
+- **PRs merged**: 12 functional/docs across both sessions.
+  - Day-1 (2026-05-19): #7 parser, #8 backfill, #9 name cleanup, #11
+    silent-zero canary, #14 missing-fh canary, #16 per-market quiet
+    canary, plus docs #10/#12/#13/#15/#17.
+  - Day-2 (2026-05-20): #18 end-of-session docs, #19 audit script,
+    #20 `/scrape-health` dashboard view.
+- **scraper-10 load split (2026-05-20):** scraper-10 was running ~6h
+  with 471 markets. Split by sub-agent into:
+    - scraper-10 (`crn-d7a6qmshg0os73bd3ai0`) — `SCRAPE_STATES=fl,wi,ca,sc`, 243 markets, `0 10 * * *`
+    - scraper-11 (`crn-d86kkoojs32c73ephgt0`, NEW) — `SCRAPE_STATES=la,mt,wv,nd`, 228 markets, `0 11 * * *`
+  All 13 env vars cloned from scraper-10 onto scraper-11 (PROXY_URL,
+  STATE_COOLDOWN=60, MAX_PROXY_ROTATIONS=6, etc.). 1h schedule offset
+  so they don't overlap. Total fleet is now 14 scrapers (10 main + 1
+  new + 3 cr-rescue).
+- **Dashboard health view (PR #20, 2026-05-20):** added
+  `/api/scrape-health` JSON endpoint + `/scrape-health` HTML heatmap
+  (rows=states, cols=last 7 days, cells red/yellow/green vs
+  per-state median) + "Quiet markets" section. Reuses
+  `find_quiet_markets()` from PR #16 — no duplication. Live at
+  https://cr-obituaries-dashboard.onrender.com/scrape-health and
+  already surfacing real quiet-market signal (sc-greenville,
+  va-henrico, ny-albany among the first hits).
+- **Audit script (PR #19):** `scripts/audit_data_quality.py`
+  Telegrams a concise report of polluted-name residue, last-24h NULL
+  funeral_home / NULL obit_text rates, and per-state capture counts.
+  Ran post-deploy; output went to Telegram per the Render cron-log
+  limitation.
+- **Proxy reloaded by operator (2026-05-20 AM CT):** addresses the
+  root cause of yesterday's `BLOCKED 50–90%` Telegram alerts. With
+  fresh 711proxy credits + the env-var tuning, tomorrow's wave is
+  the clean reading. If block rate drops below ~20% the tuning is
+  sufficient.
+- **Validation in flight:** one-off run on cr-rescue-2 (oh,ks,
+  22 markets) triggered post-proxy-reload. Compare point is
+  yesterday's 19:53 UTC `Markets: 22 | Found: 0 | Blocked: 22` run.
+- **Test count**: 127 unit tests pass (122 + 5 new in PR #20).
+- **First production exercise of canaries**: tomorrow's 06–11 UTC
+  scheduled cron runs (scraper-1 through scraper-11). The
+  previously-silent 2026-05-17 incident would now page as
+  `WARNING: silent zero` if it recurred. Per-market `Quiet markets:`
+  line surfaces single-market regressions. `WARNING: N% missing
+  funeral_home` catches listing-metadata-harvest breakage.
 
 ## Backlog
 - Step deferred: golf-tracker GitHub Actions sync (unrelated project, noted only)
-- Consider lowering scraper-10's 471-market load — full runs take 6+ hours
+- ~~**Lower scraper-10's 471-market load**~~ — _shipped 2026-05-20_. Split
+  into scraper-10 (243 mk, fl,wi,ca,sc) + scraper-11 (228 mk, la,mt,wv,nd).
+- **Audit the other 5 scrapers for similar overload** — sub-agent flagged
+  this as a side-note while splitting scraper-10. None examined yet.
+  Next step: pull per-scraper market counts and runtime histograms to
+  decide whether scrapers 1-9 also need splitting.
 - ~~**Zero-found canary**~~ — _shipped 2026-05-19 (PR #11)_. Now emits
   `WARNING: silent zero` Telegram when a batch returns Found=0 with
   Markets>=5 and no blocks/errors.
