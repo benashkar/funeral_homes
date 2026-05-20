@@ -28,15 +28,56 @@ _HEADLINE_SUFFIX_RE = re.compile(
 # whether or not a "Obituary" keyword or " - Funeral Home" tail follows it.
 # A real person name never contains a 4-digit year, so the year marks the
 # boundary between the actual name and any over-grabbed pollution.
+#
+# The leading character class tolerates the punctuation Legacy.com puts BEFORE
+# the year — a comma ("John Smith, 1940-2026"), a hyphen / en-dash / em-dash
+# ("John Smith - 1940 - 2026"), or an opening paren ("John Smith (1940 - 2026)") —
+# so the cleanup eats those orphan separators in the same pass as the year tail.
+#
 # Caught patterns:
 #   "Margaret Janet Morss Herren Obituary 2026"           → "Margaret Janet Morss Herren"
 #   "Glenn Curran McCabe 2026 - Brantley Phillips FH"     → "Glenn Curran McCabe"
 #   "Fred \"Butch\" Paxton, Jr. Obituary 2026 - Mem. Gard." → "Fred \"Butch\" Paxton, Jr."
+#   "John Smith (1940 - 2026)"                            → "John Smith"
+#   "John Smith, 1940-2026"                               → "John Smith"
+#   "John Smith - 1940 - 2026"                            → "John Smith"
 _NAME_TRAILING_JUNK_RE = re.compile(
-    r"\s+(?:Obituary\s+)?(?:19|20)\d{2}\b.*$",
+    r"[\s,\-–—(]+(?:Obituary[\s,\-–—]+)?(?:19|20)\d{2}\b.*$",
     re.IGNORECASE,
 )
-_TRAILING_OBITUARY_RE = re.compile(r"\s+Obituary\s*$", re.IGNORECASE)
+
+# Trailing "Obituary" with optional dash / en-dash / em-dash separator.
+# Catches "Mary Jones Obituary" AND "John Smith — Obituary" (em-dash).
+_TRAILING_OBITUARY_RE = re.compile(
+    r"\s*[\-–—]?\s*Obituary\s*$",
+    re.IGNORECASE,
+)
+
+# Leading "Obituary:" / "OBITUARY -" prefix.
+# Legacy.com sometimes prefixes the headline with the word "Obituary" followed
+# by a colon, dash, or en/em-dash.
+_LEADING_OBITUARY_RE = re.compile(
+    r"^\s*Obituary\s*[:\-–—]\s*",
+    re.IGNORECASE,
+)
+
+# Trailing " - <Funeral Home name>" tail WITHOUT a preceding year. Seen on
+# Legacy.com pages where the life-span span rendered empty. The suffix must
+# end with a recognised FH keyword (Funeral Home, Mortuary, Memorial Chapel,
+# Cremation Society, etc.) so we don't accidentally lop off legitimate name
+# parts after a stray dash. Hyphenated surnames like "Mary-Lou O'Brien" are
+# safe because we require a space on BOTH sides of the dash.
+_NAME_TRAILING_FH_RE = re.compile(
+    r"\s+[\-–—]\s+.+?"
+    r"(?:Funeral\s+(?:Home|Chapel|Services?)"
+    r"|Mortuary"
+    r"|Memorial\s+(?:Chapel|Gardens|Funeral|Home)"
+    r"|Cremation\s+(?:Society|Services?|Center)"
+    r"|Crematory"
+    r"|Chapel\s+of\s+the\s+[A-Z][A-Za-z]+)"
+    r"\b.*$",
+    re.IGNORECASE,
+)
 
 
 def _clean_extracted_name(name):
@@ -46,6 +87,21 @@ def _clean_extracted_name(name):
     NewsArticle.headline — so the same junk pattern can't sneak in via
     whichever code path Legacy.com happens to populate today.
 
+    Pollution shapes handled (see tests/test_obit_parser.py for full list):
+      - "Name [Obituary] YYYY [- Funeral Home]" — year-anchored tail
+      - "Name (YYYY - YYYY)" — parenthesised lifespan
+      - "Name, YYYY-YYYY" — comma lifespan
+      - "Name - YYYY - YYYY" — dash lifespan
+      - "Name - <Funeral Home Name>" — dash + FH, no year
+      - "Name [—/-] Obituary" — trailing 'Obituary' with optional dash
+      - "OBITUARY: Name" — leading 'Obituary:' prefix
+      - "name obituary" — case-insensitive variants of all of the above
+
+    Safe by design:
+      - "Smith, John" — no year-range after the comma, passes through
+      - "John Smith, Jr." — non-year suffix after the comma, passes through
+      - "Mary-Lou O'Brien", "José García-López" — internal hyphens are kept
+
     Args:
         name: Raw name string (or None).
 
@@ -54,7 +110,16 @@ def _clean_extracted_name(name):
     """
     if not name:
         return ""
-    cleaned = _NAME_TRAILING_JUNK_RE.sub("", name)
+    # Step 1: drop leading "Obituary:" / "Obituary -" prefix.
+    cleaned = _LEADING_OBITUARY_RE.sub("", name)
+    # Step 2: drop year-anchored tail (covers shapes 1, 4, 5 and the original
+    # "Name Obituary YYYY" / "Name YYYY - Funeral Home" shapes).
+    cleaned = _NAME_TRAILING_JUNK_RE.sub("", cleaned)
+    # Step 3: drop " - <Funeral Home Name>" with no year (shape 6).
+    cleaned = _NAME_TRAILING_FH_RE.sub("", cleaned)
+    # Step 4: drop trailing "Obituary" (with optional em-dash) — shape 3 + the
+    # original trailing-Obituary case. Run last so the previous steps can't
+    # leave "Obituary" floating after a year strip.
     cleaned = _TRAILING_OBITUARY_RE.sub("", cleaned)
     return cleaned.strip()
 
