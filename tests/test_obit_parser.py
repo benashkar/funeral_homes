@@ -481,6 +481,107 @@ def test_clean_empty_input():
     assert _clean_extracted_name(None) == ""
 
 
+# --- Adjacent pollution shapes (hardened 2026-05-20) ---
+#
+# These 7 shapes mirror real-world variants seen on Legacy.com pages where the
+# existing "Name [Obituary] YYYY - Funeral Home" pattern doesn't match exactly.
+# Each test pins one shape and the cleaned output the parser should produce.
+
+
+def test_clean_parenthesized_lifespan():
+    """Shape 1: 'John Smith (1940 - 2026)' — lifespan in parentheses.
+
+    Pins the cleaner stripping a trailing ' (YYYY - YYYY)' birth/death tail.
+    """
+    assert _clean_extracted_name("John Smith (1940 - 2026)") == "John Smith"
+
+
+def test_clean_leading_obituary_prefix():
+    """Shape 2: 'OBITUARY: John Smith' — leading uppercase 'OBITUARY:' prefix.
+
+    Pins the cleaner stripping a leading 'Obituary:' (case-insensitive) prefix.
+    """
+    assert _clean_extracted_name("OBITUARY: John Smith") == "John Smith"
+
+
+def test_clean_em_dash_obituary():
+    """Shape 3: 'John Smith — Obituary' — em-dash separator before 'Obituary'.
+
+    Legacy.com uses both '-' and U+2014 '—'; cleaner must handle both.
+    """
+    assert _clean_extracted_name("John Smith — Obituary") == "John Smith"
+
+
+def test_clean_comma_year_range():
+    """Shape 4: 'John Smith, 1940-2026' — year-range with comma, no spaces around dash.
+
+    Pins the cleaner stripping a trailing ', YYYY-YYYY' lifespan tail.
+    Critically, plain 'Smith, John' (no year-range) must pass through unchanged
+    — see test_clean_lastname_first_unchanged below.
+    """
+    assert _clean_extracted_name("John Smith, 1940-2026") == "John Smith"
+
+
+def test_clean_dash_lifespan():
+    """Shape 5: 'John Smith - 1940 - 2026' — life-span with dash separators.
+
+    Pins the cleaner stripping ' - YYYY - YYYY' (or any year-range tail with a
+    leading dash). The first year still anchors the existing trailing-junk
+    regex; this test just confirms the leading dash also disappears.
+    """
+    assert _clean_extracted_name("John Smith - 1940 - 2026") == "John Smith"
+
+
+def test_clean_dash_funeral_home_no_year():
+    """Shape 6: 'John Smith - Memorial Gardens Funeral Home' — dash + FH, NO year.
+
+    Seen on Legacy.com pages where the lifespan span renders empty. The cleaner
+    must recognise the FH keyword (Funeral Home / Mortuary / Memorial Chapel /
+    Cremation Society / etc.) as the boundary marker instead of a year token.
+
+    Must NOT strip names like 'Mary-Lou O'Brien' (hyphen with no spaces) or
+    'José García-López' — those are pinned in test_clean_hyphenated_names_safe.
+    """
+    assert _clean_extracted_name("John Smith - Memorial Gardens Funeral Home") == "John Smith"
+
+
+def test_clean_all_lowercase_obituary():
+    """Shape 7: 'john smith obituary' — all-lowercase trailing 'obituary'.
+
+    The trailing-obituary regex already uses re.IGNORECASE; this test pins that
+    behavior so a future "tighten the regex" refactor can't silently break it.
+    """
+    assert _clean_extracted_name("john smith obituary") == "john smith"
+
+
+# --- Guardrails: ambiguity / leave-alone cases for shapes 4 + 5 ---
+
+def test_clean_lastname_first_unchanged():
+    """Guardrail for shape 4: 'Smith, John' (last-name-first) must pass through.
+
+    The comma cleanup must only fire when the post-comma token is a YYYY year
+    range, not when it's another name token. This guards against over-stripping.
+    """
+    assert _clean_extracted_name("Smith, John") == "Smith, John"
+
+
+def test_clean_hyphenated_names_safe():
+    """Guardrail for shape 6: hyphenated surnames must pass through.
+
+    The FH-no-year strip uses ' - ' (dash with surrounding spaces) AND requires
+    a known FH keyword in the suffix, so internal hyphens like 'Mary-Lou' or
+    'García-López' are safe.
+    """
+    assert _clean_extracted_name("Mary-Lou O'Brien") == "Mary-Lou O'Brien"
+    assert _clean_extracted_name("José García-López") == "José García-López"
+
+
+def test_clean_jr_suffix_with_comma_passes_through():
+    """Adjacent guardrail: 'John Smith, Jr.' has a comma but not a year-range,
+    so the comma cleanup must not touch it."""
+    assert _clean_extracted_name("John Smith, Jr.") == "John Smith, Jr."
+
+
 def test_parse_name_strips_obituary_year_from_person_block():
     """If Person.name contains 'Name Obituary YYYY', the cleaner must strip it."""
     POLLUTED_PERSON_HTML = """
