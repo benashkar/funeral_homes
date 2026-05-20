@@ -16037,5 +16037,17 @@
     "legacy_slug": "van-wert-county",
     "type": "county",
     "priority": true
+  },
+  {
+    "site_id": "tx-harris",
+    "state": "texas",
+    "legacy_slug": "harris-county",
+    "type": "county"
+  },
+  {
+    "site_id": "ga-fulton",
+    "state": "georgia",
+    "legacy_slug": "fulton-county",
+    "type": "county"
   }
 ]
