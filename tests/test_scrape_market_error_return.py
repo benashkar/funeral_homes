@@ -41,13 +41,14 @@ def test_blocked_market_returns_diag_string(scraper_cls, get_conn, *_mocks):
     instance.scrape_today.side_effect = _simulate_blocked
 
     market = {"site_id": "tx-harris", "priority": False}
-    site_id, found, new, error = scrape_market(market, session=MagicMock())
+    site_id, found, new, error, missing_fh = scrape_market(market, session=MagicMock())
 
     assert site_id == "tx-harris"
     assert found == 0
     assert new == 0
     assert error is not None, "blocked market must surface an error, not None"
     assert error.startswith("listing_fetch_failed")
+    assert missing_fh == 0  # nothing fetched, so nothing missing
 
 
 @patch("scheduler.run_daily.enrich_funeral_home")
@@ -70,7 +71,11 @@ def test_successful_market_returns_no_error(scraper_cls, get_conn, *_mocks):
     instance.scrape_today.side_effect = _simulate_success
 
     market = {"site_id": "ca-los-angeles", "priority": False}
-    site_id, found, new, error = scrape_market(market, session=MagicMock())
+    site_id, found, new, error, missing_fh = scrape_market(market, session=MagicMock())
 
     assert found == 1
     assert error is None
+    # The mocked obit dict has no funeral_home key, so it counts as missing.
+    # This isn't a fixture bug — it documents the fact that scrape_market
+    # exposes the missing-FH count for the run-level canary in run().
+    assert missing_fh == 1

@@ -67,3 +67,50 @@ def test_zero_markets_does_not_crash():
     """Edge case: empty market list shouldn't divide by zero."""
     s = _build_status(markets_count=0, total_found=0, blocked=0, errors=0)
     assert s == "OK"  # nothing to do, nothing to warn about
+
+
+# --- Missing-funeral-home canary ---
+
+def test_missing_fh_canary_fires_at_70pct():
+    """500 obits, 350 missing FH (70%) → WARNING."""
+    s = _build_status(markets_count=22, total_found=500, blocked=0, errors=0, obits_missing_fh=350)
+    assert s.startswith("WARNING")
+    assert "missing funeral_home" in s
+    assert "70%" in s
+
+
+def test_missing_fh_canary_fires_at_100pct():
+    """All obits captured without FH — strongest signal."""
+    s = _build_status(markets_count=22, total_found=200, blocked=0, errors=0, obits_missing_fh=200)
+    assert s.startswith("WARNING")
+    assert "100%" in s
+    assert "missing funeral_home" in s
+
+
+def test_missing_fh_canary_does_not_fire_below_50_obits():
+    """Tiny batches are exempt — only fire when there's a meaningful sample."""
+    s = _build_status(markets_count=22, total_found=40, blocked=0, errors=0, obits_missing_fh=40)
+    assert s == "OK"  # 40 < threshold, even though 100% missing
+
+
+def test_missing_fh_canary_does_not_fire_at_natural_rate():
+    """A ~5% natural missing-FH rate must stay OK."""
+    s = _build_status(markets_count=22, total_found=500, blocked=0, errors=0, obits_missing_fh=25)
+    assert s == "OK"
+
+
+def test_missing_fh_canary_below_70pct_threshold():
+    """50% missing is concerning but not yet WARNING-loud."""
+    s = _build_status(markets_count=22, total_found=500, blocked=0, errors=0, obits_missing_fh=250)
+    assert s == "OK"  # below 70% threshold
+
+
+def test_silent_zero_takes_priority_over_missing_fh():
+    """If found=0 the silent-zero rule fires; missing_fh ratio is meaningless."""
+    s = _build_status(markets_count=22, total_found=0, blocked=0, errors=0, obits_missing_fh=0)
+    assert "silent zero" in s
+
+
+def test_blocked_takes_priority_over_missing_fh():
+    s = _build_status(markets_count=22, total_found=200, blocked=15, errors=0, obits_missing_fh=200)
+    assert s.startswith("BLOCKED")
