@@ -1,6 +1,6 @@
 # Legacy Obituary Scraper — Project Plan
 
-_Last updated: 2026-05-19 18:50 CT_
+_Last updated: 2026-05-19 20:50 CT_
 
 ## Active Incident — Legacy.com Next.js Migration (RESOLVED, verifying)
 
@@ -87,6 +87,24 @@ ERRORS, then this new WARNING, then DEGRADED, then OK. Unit-tested with 9
 cases pinning the 2026-05-17 incident shape plus boundary conditions.
 Merged + redeployed to all 13 services on commit `1fb4c9ed`.
 
+### Follow-up shipped — Missing-funeral-home canary (PR #14, 2026-05-19 20:45 CT)
+The silent-zero canary doesn't catch a different shape that's specific to
+the new `/person/` URL flow: listing-page result-card HTML is the **only**
+source of `funeral_home` (and `obit_text`) for those URLs — the detail
+pages no longer expose them. If Legacy.com tweaks the result-card markup
+again, URLs and names would still flow but `funeral_home` would silently
+become NULL for every obit. PR #14 plugs that gap:
+- `scrape_market` now tracks a per-market `missing_fh` count and returns
+  it in a 5-tuple. `run()` aggregates `total_missing_fh`.
+- `_build_status` adds an `obits_missing_fh` parameter and emits
+  `WARNING: N% missing funeral_home — listing-metadata harvest may be
+  broken` when `total_found >= 50` and `missing-ratio >= 70%`. The
+  50-obit floor avoids tiny-batch noise; the 70% ratio is well above
+  the natural ~5% baseline of working runs.
+- 7 new tests pin fire / no-fire cases and priority ordering against
+  BLOCKED and silent-zero.
+- Merged + redeployed to all 13 services on commit `b38be1de`.
+
 ### Status — RESOLVED & VERIFYING 2026-05-19 18:35 CT
 - [x] Root cause identified and verified live
 - [x] PR #7 (URL + harvest) merged + deployed to all 13 services
@@ -102,6 +120,8 @@ Merged + redeployed to all 13 services on commit `1fb4c9ed`.
       6 min (was 24-min retry storm before fix)
 - [x] Silent-zero canary deployed (PR #11) — future format breaks page
       via `WARNING:` Telegram instead of silent Status:OK
+- [x] Missing-funeral-home canary deployed (PR #14) — catches
+      listing-metadata regression that silent-zero would miss
 - [ ] Confirm tomorrow's scheduled run shows block rate <30% across all
       13 services
 - [ ] Watch for "Obituary YYYY" no-dash polluted names in next-day audit
@@ -217,6 +237,10 @@ several hours; jobs will complete on their own and send per-run Telegrams.
   could still be a follow-up if false-negatives appear (e.g. a
   legitimately-zero state batch hides a real parser break in one
   of its markets).
+- ~~**Missing-funeral-home canary**~~ — _shipped 2026-05-19 (PR #14)_.
+  Now emits `WARNING: N% missing funeral_home` when total_found >= 50
+  and >= 70% of obits come back with funeral_home=NULL. Guards the
+  /person/-page-only listing-metadata harvest path.
 - **Auto-recovery of /person/ pages without listing context** — if a
   detail-page fetch for a /person/ URL happens without listing metadata
   (e.g. backfill re-fetches), funeral_home + obit_text will be NULL.
