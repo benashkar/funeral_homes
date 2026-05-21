@@ -10239,8 +10239,8 @@
   {
     "site_id": "nm-bernalillo",
     "state": "new-mexico",
-    "legacy_slug": "bernalillo-county",
-    "type": "county"
+    "legacy_slug": "albuquerque",
+    "type": "city"
   },
   {
     "site_id": "nm-catron",
@@ -10281,7 +10281,7 @@
   {
     "site_id": "nm-do-a-ana",
     "state": "new-mexico",
-    "legacy_slug": "do-a-ana-county",
+    "legacy_slug": "dona-ana",
     "type": "county"
   },
   {
@@ -10389,8 +10389,8 @@
   {
     "site_id": "nm-sandoval",
     "state": "new-mexico",
-    "legacy_slug": "sandoval-county",
-    "type": "county"
+    "legacy_slug": "rio-rancho",
+    "type": "city"
   },
   {
     "site_id": "nm-santa-fe",
