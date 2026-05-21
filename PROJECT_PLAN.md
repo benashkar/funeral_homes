@@ -1,6 +1,6 @@
 # Legacy Obituary Scraper — Project Plan
 
-_Last updated: 2026-05-20 13:55 CT (post scraper-1 split + name-cleanup hardening + live-verify)_
+_Last updated: 2026-05-21 15:45 CT (post NM slug-rot fix + self-healing canary bridge)_
 
 ## Active Incident — Legacy.com Next.js Migration (RESOLVED, verifying)
 
@@ -237,6 +237,67 @@ several hours; jobs will complete on their own and send per-run Telegrams.
   parser-break incidents surface within hours instead of days.
 - Health Telegram 21:00 UTC; CCR self-healing agent 22:00 UTC.
 - See `CLAUDE.md` for full service IDs, schema, and env vars.
+
+## 2026-05-21 — first full-fleet wave verification + NM slug-rot fix
+
+### Wave results vs yesterday's predictions
+Tomorrow-morning's scheduled wave produced exactly the signal we
+designed for:
+- Block rate dropped from yesterday's 50-90% to **0-23%** across all
+  alerts. `BLOCKED 100%` cr-rescue-2 incident yesterday → `DEGRADED:1`
+  + 613 obits today. Proxy reload + tuning **validated**.
+- Silent-zero pattern: **none**. Every alert showed real captures.
+- scraper-12's first run (id,wa,nm): **9,288 found / 6,932 new** on
+  116 markets — biggest haul of any single batch today.
+- scraper-1 post-split (va,ak,ut): 10,827 found / 7,784 new on
+  188 markets, DEGRADED:43.
+- New `Quiet markets:` line surfacing real signal on every alert.
+
+### NM slug-rot (PR #25)
+scraper-12's first NM run flagged 14 quiet markets. Live probing
+revealed two distinct failure modes:
+- **5 markets 404** on the standard `{county}-county` URL pattern
+  because Legacy.com restructured NM URLs from county-suffix to
+  city-name slugs. Fixed 3 confirmed working slugs in markets.json:
+  - nm-bernalillo: `bernalillo-county` → `albuquerque` (50 cards)
+  - nm-sandoval: `sandoval-county` → `rio-rancho` (50 cards)
+  - nm-do-a-ana: `do-a-ana-county` → `dona-ana` (36 cards)
+  - nm-mckinley / nm-otero: 200 with 0 cards even on city slugs —
+    probably genuinely low-volume rural; leaving canary to track.
+- **5 markets 200 with JSON-LD ItemList data** (santa-fe / quay /
+  chaves / valencia / san-juan) — transient blip on scraper-12's
+  first run, not a slug issue. Canary will surface them again if
+  they recur.
+
+`site_id`s preserved across the slug change so historical
+`scrape_log` and `obituaries` rows still join.
+
+### Self-healing canary bridge (PR #26)
+**Why:** The Layer-3 self-healing trigger
+(`trig_01EzPjGTvjG6cK9BW5NDY3bz`, daily 22:00 UTC, model
+`claude-sonnet-4-6`) reads `/health-status.json` to decide whether to
+PR a fix. Its Recipe B (URL slug regression → PR) only knew about
+`stale_markets` — markets that hadn't run for days. That **misses the
+exact pattern** of today's NM incident: markets that DID run today,
+returned 0, but had a healthy 7-day baseline.
+
+**Fix:**
+- `/health-status.json` now exposes a `quiet_markets[]` array from the
+  same `find_quiet_markets()` helper PR #16 / PR #20 use.
+- Status logic elevates to `ISSUES` when `quiet_markets` is non-empty.
+- Recipe B's trigger condition updated to fire on either
+  `quiet_markets[]` or `stale_markets[]`. The probe-and-classify flow
+  now handles three outcomes: 404 → PR slug fix; 200-empty → report;
+  200-healthy → report as transient.
+- Tests +2: assert `quiet_markets` key present + status flips to
+  ISSUES when canary fires (139 pass).
+- Trigger manually fired post-deploy. If it sees the current 25 quiet
+  markets, it will probe the top 5 by 7d avg and (per recipe) PR any
+  that are 404 slug-rot.
+
+Now any future NM-style URL restructure → next day at 22:00 UTC the
+agent automatically opens a PR with the corrected slugs. No human in
+the loop required for confirmed 404 patterns.
 
 ## Operational notes
 - **Render `/v1/logs` does NOT serve cron-job runtime logs after the run
