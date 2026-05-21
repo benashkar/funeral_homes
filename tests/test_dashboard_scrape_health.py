@@ -59,6 +59,67 @@ def test_api_scrape_health_shape_empty():
         assert data["days"][0] > data["days"][-1]
 
 
+def _health_status_rows_empty(sql):
+    """Returns just-enough rows for /health-status.json to run without crash."""
+    s = sql.upper()
+    if "COUNT(DISTINCT SITE_ID) AS MARKETS" in s:
+        return [{"markets": 0, "found": 0, "new_obits": 0, "blocked": 0, "errors": 0}]
+    if "SUM(OBITS_NEW) AS N" in s:
+        return [{"n": 0}]
+    if "COUNT(*) AS C" in s:
+        return [{"c": 0}]
+    return []
+
+
+def test_health_status_json_includes_quiet_markets():
+    """The Layer-3 self-healing trigger reads /health-status.json. After
+    2026-05-21 the response must include `quiet_markets` so the trigger
+    can apply Fix Recipe B (URL slug regression -> PR) on the per-market
+    canary's output. Empty list is fine; the KEY must be present."""
+    for app, _cur in _build_app_with_mock_conn(_health_status_rows_empty):
+        client = app.test_client()
+        resp = client.get("/health-status.json")
+        assert resp.status_code == 200
+        data = resp.get_json()
+        assert "quiet_markets" in data, "self-healing trigger needs this field"
+        assert isinstance(data["quiet_markets"], list)
+        # Companion keys the trigger has read for months — must not regress.
+        for k in ("status", "scrape_today", "blocked_sample", "error_sample",
+                  "stale_markets", "backfill"):
+            assert k in data, f"existing trigger field {k} disappeared"
+
+
+def test_health_status_json_status_issues_when_quiet_markets_present():
+    """The new quiet_markets canary must elevate status to ISSUES so the
+    daily self-healing trigger picks it up (otherwise it'd see status=OK
+    and skip)."""
+    def rows(sql):
+        s = sql.upper()
+        if "COUNT(DISTINCT SITE_ID) AS MARKETS" in s:
+            # today's totals — all clean
+            return [{"markets": 22, "found": 1000, "new_obits": 500, "blocked": 0, "errors": 0}]
+        if "SUM(OBITS_NEW) AS N" in s:
+            return [{"n": 800}]
+        if "COUNT(*) AS C" in s:
+            return [{"c": 0}]
+        if "SELECT DISTINCT SITE_ID" in s:
+            return [{"site_id": "nm-bernalillo"}, {"site_id": "ks-allen"}]
+        if "ACTIVE_DAYS >= 3" in s:
+            # find_quiet_markets inner SQL — pretend nm-bernalillo went quiet
+            return [("nm-bernalillo", 50.0, 5)]
+        return []
+
+    for app, _cur in _build_app_with_mock_conn(rows):
+        client = app.test_client()
+        resp = client.get("/health-status.json")
+        assert resp.status_code == 200
+        data = resp.get_json()
+        # Even with all-zero blocked/errors, a quiet market must flip status.
+        if data["quiet_markets"]:
+            assert data["status"] == "ISSUES", \
+                f"quiet_markets={data['quiet_markets']} must elevate status, got {data['status']}"
+
+
 def test_api_scrape_health_groups_by_state_prefix():
     """site_ids like 'tx-brown', 'tx-runnels', 'oh-pickaway' group by 2-letter prefix."""
     today = date.today()

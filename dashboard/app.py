@@ -779,6 +779,23 @@ def create_app():
             """)
             stale = [{"site_id": r["site_id"], "days_stale": r["days_stale"]} for r in cur.fetchall()]
 
+            # Quiet markets: today=0 obits but >=3 active days in the last 7
+            # (the canary from PR #16 / PR #20). Drives self-healing Fix
+            # Recipe B (URL slug regression → PR) when a slug-rot pattern
+            # emerges. Reuses find_quiet_markets so the rule stays in one
+            # place; passes today's site_ids so we only flag markets that
+            # actually ran today.
+            from scraper.db_writer import find_quiet_markets
+            cur.execute(
+                "SELECT DISTINCT site_id FROM scrape_log WHERE run_date = CURDATE()"
+            )
+            site_ids_today = [r["site_id"] for r in cur.fetchall() if r.get("site_id")]
+            quiet_raw = find_quiet_markets(conn, site_ids_today) if site_ids_today else []
+            quiet_markets = [
+                {"site_id": sid, "last_7d_avg": float(avg), "active_days": int(act)}
+                for sid, avg, act in quiet_raw
+            ]
+
             cur.execute("SELECT COUNT(*) AS c FROM obituaries WHERE is_deleted=0 AND death_date IS NULL")
             missing_dd = cur.fetchone()["c"]
             cur.execute("SELECT COUNT(*) AS c FROM obituaries WHERE is_deleted=0 AND funeral_home IS NULL")
@@ -792,7 +809,7 @@ def create_app():
             blocked_pct = (blocked * 100 // markets) if markets else 0
             if blocked_pct >= 50:
                 status = "BLOCKED"
-            elif (today.get("errors") or 0) > 0 or blocked > 0 or stale:
+            elif (today.get("errors") or 0) > 0 or blocked > 0 or stale or quiet_markets:
                 status = "ISSUES"
             else:
                 status = "OK"
@@ -811,6 +828,7 @@ def create_app():
                 "blocked_sample": blocked_sample,
                 "error_sample": error_sample,
                 "stale_markets": stale,
+                "quiet_markets": quiet_markets,
                 "backfill": {
                     "missing_death_date": missing_dd,
                     "missing_funeral_home": missing_fh,
