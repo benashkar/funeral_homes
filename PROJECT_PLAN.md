@@ -1,6 +1,6 @@
 # Legacy Obituary Scraper — Project Plan
 
-_Last updated: 2026-05-22 01:25 CT (auto-merge gates wired into self-healing trigger)_
+_Last updated: 2026-05-22 02:00 CT (full-auto v4 trigger + audit dashboard + kill switch)_
 
 ## Active Incident — Legacy.com Next.js Migration (RESOLVED, verifying)
 
@@ -325,6 +325,64 @@ Net result: confirmed 404 slug-rot incidents → detected at 22:00 UTC
 → fixed and live by ~22:30 UTC without human review. Anything more
 ambiguous (200-empty pages, code bugs, mass blocks) still escalates.
 
+### Full-auto v4 — all recipes auto-actionable + safety net (2026-05-22)
+The earlier v3 only auto-merged Recipe B (markets.json slug fixes).
+v4 expands autonomy across every recipe AND adds operator controls.
+
+**Expanded auto-actions per recipe:**
+- **Recipe A (mass IP block)** — agent now classifies as single-service
+  vs fleet-wide. If 95% of `blocked_sample` falls on ONE scraper while
+  other services ran fine: auto-suspend the affected service via
+  `POST /v1/services/{id}/suspend`. Otherwise (fleet-wide, proxy
+  exhausted): still escalates as before.
+- **Recipe B (slug rot)** — same as v3 but Gate 2 lowered from
+  ≥10 cards to ≥3 cards (captures low-volume rural fixes).
+- **Recipe C-bug (backfill code regression)** — agent fixes the
+  script AND adds a unit test in `tests/test_*.py`. Auto-merge
+  eligible via new Gate 1B: diff touches ONLY
+  `scripts/backfill_*.py` + a test file containing "regression"
+  or a bug-reference comment.
+- **Recipe D-dead (30+ day stale)** — agent auto-prepares a
+  `markets.json` PR removing the orphaned `site_id` entry (keeping
+  the historical `obituaries` + `scrape_log` rows intact for lookup).
+  Auto-merge via Gate 1A.
+- **Recipe D-transient (3-29 day stale)** — report only, could come
+  back.
+- **Rate limit** — Gate 4 raised from <3 to <6 auto-merges per UTC
+  day to handle wider Legacy.com migration days.
+
+**Safety net (PR #29 + trigger Step 0):**
+- **Kill switch:** the agent's new Step 0 checks for
+  `.self_healing_paused` at the repo root (on disk AND via the GitHub
+  contents API). If present → PAUSED Telegram → exit. No diagnosis,
+  no merge, no suspend.
+- **`scripts/pause_self_healing.sh`** + **`scripts/resume_self_healing.sh`**
+  — one-command toggle scripts.
+- **`/self-healing-audit` dashboard page** — 30-day history of
+  every `[AUTO-MERGE]` commit (SHA, files, date, author, linked to
+  GitHub) + every currently-suspended scraper service. Pause status
+  banner at top (red/green/yellow). Stdlib only — uses GitHub
+  commits API + Render `/v1/services`, no `git` binary, no new
+  package deps. Linked from the daily Telegram so audit trail is one
+  click away.
+- **Telegram audit lines:** every action now includes a per-gate
+  PASS/FAIL breakdown plus the audit-page URL.
+- **Existing guardrails preserved:** every auto-merge commit subject
+  is tagged `[AUTO-MERGE]`. `git revert {sha} && git push` undoes
+  any auto-merge in seconds.
+
+Layered safety:
+```
+Layer 0: kill switch       — .self_healing_paused → all auto halted
+Layer 1: 4 auto-merge gates — path scope + ≥3 cards + tests + rate
+Layer 2: Telegram audit     — every action with diff + gate breakdown
+Layer 3: dashboard audit    — /self-healing-audit 30-day history
+Layer 4: human revert       — git revert {sha} && git push
+```
+
+Test count: 150 (started session at 42 / 2026-05-19 AM). 29 PRs
+merged across funeral_homes (#7 → #29) over the three days.
+
 ## Operational notes
 - **Render `/v1/logs` does NOT serve cron-job runtime logs after the run
   exits** — only build/deploy events surface. Verified 2026-05-19 by
@@ -422,10 +480,18 @@ ambiguous (200-empty pages, code bugs, mass blocks) still escalates.
   (now split). Scrapers 2 and 3 are the next-most-likely to tip but
   still in the WATCH band. Audit report at
   `C:\Users\cashk\tmp-clone\fh_overload_audit\OVERLOAD_AUDIT.md`.
-- **Add tx-harris + ga-fulton to `config/markets.json`** — live-verify
-  agent found these major metros are not registered, even though their
-  Legacy.com pages work fine. Synthesized slugs returned 39 / 42 URLs
-  on probe. Low-effort coverage win.
+- ~~**Add tx-harris + ga-fulton to markets.json**~~ — _shipped
+  2026-05-20 (PR #24)_. Houston + Atlanta now in the registry.
+- **Auto-revert on harm detection** — not built yet. If an
+  auto-merged slug fix makes a market WORSE the day after merge
+  (today's obits_found < pre-merge 3-day avg / 2), the next-day
+  agent run should auto-revert that commit. Requires the agent to
+  track which `[AUTO-MERGE]` SHAs it owns and parse the affected
+  site_ids from each diff. Design-only at this point; ship when a
+  real bad-auto-merge incident motivates it.
+- **Watch scrapers 2 and 3** — closest to the 300-market SPLIT
+  threshold (298 and 278 markets). Re-audit after the next CR
+  market wave.
 - ~~**Zero-found canary**~~ — _shipped 2026-05-19 (PR #11)_. Now emits
   `WARNING: silent zero` Telegram when a batch returns Found=0 with
   Markets>=5 and no blocks/errors.
