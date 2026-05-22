@@ -730,6 +730,34 @@ def create_app():
             logger.error("scrape_health_view error: %s", e)
             return f"<h1>Database Error</h1><p>{e}</p>", 503
 
+    @app.route("/self-healing-audit")
+    def self_healing_audit():
+        """Audit trail for the Layer-3 self-healing trigger.
+
+        Read-only: lists `[AUTO-MERGE]` commits + suspended Render scrapers
+        + the .self_healing_paused kill-switch status.
+        """
+        from dashboard.self_healing_audit import (
+            fetch_auto_merges,
+            fetch_suspended_scrapers,
+            fetch_pause_status,
+            TRIGGER_ID,
+        )
+        try:
+            auto_merges = fetch_auto_merges()
+            suspended = fetch_suspended_scrapers()
+            pause = fetch_pause_status()
+            return render_template(
+                "self_healing_audit.html",
+                auto_merges=auto_merges,
+                suspended=suspended,
+                pause=pause,
+                trigger_id=TRIGGER_ID,
+            )
+        except Exception as e:
+            logger.error("self-healing-audit route error: %s", e)
+            return f"<h1>Error</h1><p>{e}</p>", 503
+
     @app.route("/health-status.json")
     def health_status_json():
         """Structured health snapshot for the Layer-3 diagnostic agent.

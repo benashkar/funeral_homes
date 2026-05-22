@@ -1,0 +1,1 @@
+# Touch a file named `.self_healing_paused` (without the .example suffix) at the repo root to halt all self-healing auto-actions on the next 22:00 UTC run. The agent will still send a Telegram saying PAUSED. Delete the file (or `scripts/resume_self_healing.sh`) to resume.

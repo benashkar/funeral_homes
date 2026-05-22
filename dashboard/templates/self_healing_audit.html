@@ -1,0 +1,103 @@
+{% extends "base.html" %}
+{% block title %}Self-Healing Audit — CR Obituaries{% endblock %}
+{% block content %}
+<style>
+    .sh-banner { padding: 14px 18px; border-radius: 8px; margin-bottom: 20px; font-weight: 600; }
+    .sh-banner-paused { background: #f8d7da; color: #721c24; border: 1px solid #f5c6cb; }
+    .sh-banner-active { background: #d4edda; color: #155724; border: 1px solid #c3e6cb; }
+    .sh-banner-unknown { background: #fff3cd; color: #856404; border: 1px solid #ffeeba; }
+    .sh-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+    .sh-card { background: white; border-radius: 8px; box-shadow: 0 1px 3px rgba(0,0,0,0.1); padding: 16px; }
+    .sh-card h3 { font-size: 1.05rem; margin-bottom: 12px; color: #2c3e50; }
+    .sh-card table { width: 100%; }
+    .sh-card td, .sh-card th { padding: 8px 10px; font-size: 13px; vertical-align: top; }
+    .sh-empty { color: #888; font-style: italic; padding: 12px 0; }
+    .sh-sha { font-family: monospace; }
+    .sh-files { font-size: 12px; color: #555; }
+    .sh-meta { font-size: 13px; color: #666; margin-bottom: 16px; }
+    .sh-meta code { font-size: 12px; }
+    @media (max-width: 900px) { .sh-grid { grid-template-columns: 1fr; } }
+</style>
+
+<h2>Self-Healing Audit</h2>
+<p class="sh-meta">
+    Read-only view of actions taken by the Layer-3 self-healing trigger
+    <code>{{ trigger_id }}</code>. Updated each time you load this page.
+</p>
+
+{% if pause.paused %}
+<div class="sh-banner sh-banner-paused">
+    PAUSED — <code>.self_healing_paused</code> exists on master. The trigger will
+    skip all auto-actions on the next 22:00 UTC run. Run
+    <code>scripts/resume_self_healing.sh</code> to re-enable.
+</div>
+{% elif pause.known %}
+<div class="sh-banner sh-banner-active">
+    ACTIVE — kill-switch file absent. Auto-merge + auto-suspend are armed.
+    Run <code>scripts/pause_self_healing.sh</code> to halt.
+</div>
+{% else %}
+<div class="sh-banner sh-banner-unknown">
+    UNKNOWN — could not reach GitHub to check kill-switch state. Treating as
+    active. Refresh in a moment.
+</div>
+{% endif %}
+
+<div class="sh-grid">
+    <div class="sh-card">
+        <h3>Auto-merges (last 30 days)</h3>
+        {% if auto_merges %}
+        <table>
+            <thead>
+                <tr><th>When</th><th>Commit</th><th>Author</th><th>Files</th></tr>
+            </thead>
+            <tbody>
+                {% for m in auto_merges %}
+                <tr>
+                    <td>
+                        {{ m.date_relative }}<br>
+                        <span style="color:#999; font-size:11px;">{{ m.date_iso }}</span>
+                    </td>
+                    <td>
+                        {{ m.subject }}<br>
+                        <a class="sh-sha" href="{{ m.url }}" target="_blank" rel="noopener">{{ m.short_sha }}</a>
+                    </td>
+                    <td>{{ m.author }}</td>
+                    <td class="sh-files">
+                        {% for f in m.files %}<div>{{ f }}</div>{% endfor %}
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+        {% else %}
+        <div class="sh-empty">No <code>[AUTO-MERGE]</code> commits in the last 30 days.</div>
+        {% endif %}
+    </div>
+
+    <div class="sh-card">
+        <h3>Auto-suspended Render services</h3>
+        {% if suspended %}
+        <table>
+            <thead>
+                <tr><th>Service</th><th>Suspended</th><th>Resume</th></tr>
+            </thead>
+            <tbody>
+                {% for s in suspended %}
+                <tr>
+                    <td>{{ s.name }}</td>
+                    <td>
+                        {{ s.suspended }}<br>
+                        <span style="color:#999; font-size:11px;">{{ s.suspended_relative }} ({{ s.suspended_at }})</span>
+                    </td>
+                    <td><a href="{{ s.resume_url }}" target="_blank" rel="noopener">Open in Render</a></td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+        {% else %}
+        <div class="sh-empty">No scrapers currently suspended.</div>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}
