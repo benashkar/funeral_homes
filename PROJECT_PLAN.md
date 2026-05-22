@@ -1,6 +1,6 @@
 # Legacy Obituary Scraper — Project Plan
 
-_Last updated: 2026-05-21 15:45 CT (post NM slug-rot fix + self-healing canary bridge)_
+_Last updated: 2026-05-22 01:25 CT (auto-merge gates wired into self-healing trigger)_
 
 ## Active Incident — Legacy.com Next.js Migration (RESOLVED, verifying)
 
@@ -298,6 +298,32 @@ returned 0, but had a healthy 7-day baseline.
 Now any future NM-style URL restructure → next day at 22:00 UTC the
 agent automatically opens a PR with the corrected slugs. No human in
 the loop required for confirmed 404 patterns.
+
+### Auto-merge gates wired (2026-05-22)
+The trigger prompt now auto-merges Recipe B PRs when ALL four safety
+gates pass:
+1. **markets.json-only**: PR diff touches no other file (no code, no
+   schema, no tests). Recipe C-bug PRs fail this and stay in review.
+2. **≥10 cards verified**: WebFetch on the proposed new URL must
+   return 200 with at least 10 `result-card-` markers or 10
+   `mainEntity.itemListElement` items. If the PR fixes multiple
+   markets, the weakest one must still clear the bar.
+3. **Tests pass**: the `pytest tests/` run from Step 4 exited 0.
+4. **Rate limit**: at most 3 auto-merges per UTC day (counts
+   `[AUTO-MERGE]` strings in commit subjects on master). Prevents a
+   runaway agent from shipping many bad slugs.
+
+If all 4 pass → `gh pr merge --admin --squash` with subject suffix
+`[AUTO-MERGE]` → trigger redeploys on all 15 scrapers so the new
+slug takes effect. Telegram message explicitly says "AUTO-MERGED"
+with per-gate PASS/FAIL audit lines.
+
+If any gate fails → PR stays open with merge URL in the Telegram
+(prior behavior).
+
+Net result: confirmed 404 slug-rot incidents → detected at 22:00 UTC
+→ fixed and live by ~22:30 UTC without human review. Anything more
+ambiguous (200-empty pages, code bugs, mass blocks) still escalates.
 
 ## Operational notes
 - **Render `/v1/logs` does NOT serve cron-job runtime logs after the run
