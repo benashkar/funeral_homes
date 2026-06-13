@@ -5,7 +5,7 @@ from unittest.mock import patch, MagicMock
 import pytest
 
 from utils import rate_limiter
-from utils.rate_limiter import _is_challenge_response, polite_get
+from utils.rate_limiter import _is_challenge_response, create_session, polite_get
 
 
 def _resp(status, body):
@@ -56,6 +56,30 @@ def test_small_body_is_not_challenge():
 def test_non_200_is_not_challenge():
     body = "<html><body>x</body></html>"
     assert _is_challenge_response(_resp(503, body)) is False
+
+
+# ---- create_session uses curl_cffi impersonation in PROXY mode ----
+# Reproducer for the 2026-06-13 fix: Legacy.com's Cloudflare now fingerprints
+# the TLS client, so plain `requests` (even via a residential proxy) gets a hard
+# 403. Proxy mode MUST use curl_cffi Chrome impersonation. Before the fix this
+# returned a stdlib session (_impersonated False) and the assertion failed.
+
+@patch("utils.rate_limiter._proxy_self_test", lambda *_: None)
+@patch("utils.rate_limiter._USE_CURL_CFFI", True)
+@patch("utils.rate_limiter.PROXY_URL", "http://u:p@gw:10000")
+def test_proxy_mode_uses_curl_cffi_impersonation():
+    captured = {}
+
+    def fake_session(impersonate=None):
+        captured["impersonate"] = impersonate
+        return MagicMock()
+
+    with patch.object(rate_limiter.cffi_requests, "Session", side_effect=fake_session):
+        session = create_session()
+
+    # The winning combo is curl_cffi Chrome impersonation routed through the proxy.
+    assert captured.get("impersonate") == "chrome120"
+    assert getattr(session, "_impersonated", False) is True
 
 
 # ---- polite_get retries challenge-200 responses ----

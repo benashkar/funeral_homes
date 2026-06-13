@@ -155,26 +155,43 @@ def _make_stdlib_session():
 def create_session():
     """Return an HTTP session tuned for the current egress mode.
 
-    Two modes, because the right tool differs:
+    Both modes now use curl_cffi Chrome-120 impersonation, because as of
+    2026-06 Legacy.com's Cloudflare fingerprints the TLS/HTTP client itself:
+    plain `requests` gets a hard 403 "Just a moment..." 100% of the time —
+    direct AND through a residential proxy. Only an impersonated browser
+    ClientHello passes.
 
-    - PROXY mode (PROXY_URL set): use plain `requests`. The residential
-      proxy IP is what gets us past Cloudflare; an honest `requests` TLS
-      fingerprint from a residential IP passes ~73% of the time. curl_cffi's
-      Chrome-120 impersonation, when tunneled through the HTTP proxy, is
-      *reliably* blocked (0% success in testing) — the impersonated
-      ClientHello does not survive the proxy CONNECT cleanly and the
-      "claims-to-be-Chrome-but-isn't" mismatch is itself a hard bot signal.
+    - PROXY mode (PROXY_URL set): curl_cffi impersonation + residential exit
+      IP. Verified 2026-06-13 (curl_cffi 0.15.0 + 711proxy): 7/7 markets
+      200 OK with full obituary data, incl. big counties. This REVERSES the
+      old assumption that curl_cffi-through-an-HTTP-proxy is blocked — with
+      curl_cffi 0.15.0 the impersonated ClientHello now survives the proxy
+      CONNECT, and it is the ONLY path that gets past Legacy.com today.
+      (Plain-requests-via-proxy now measures 0/8 — hard 403 + RST.)
 
-    - DIRECT mode (no PROXY_URL): use curl_cffi Chrome-120 impersonation.
-      From a datacenter IP we need every disguise we can get; plain
-      `requests` is blocked on sight there.
+    - DIRECT mode (no PROXY_URL): curl_cffi Chrome-120 impersonation. Works
+      from a residential IP; a datacenter IP still gets blocked, so prod
+      should always run with PROXY_URL set.
+
+    If curl_cffi is unavailable we fall back to stdlib requests, but that
+    path is expected to be ~100% blocked by Cloudflare now — install
+    curl_cffi.
     """
     if PROXY_URL:
-        session = _make_stdlib_session()
-        session._impersonated = False
-        session.proxies = dict(PROXIES)
-        proxy_host = PROXY_URL.split("@")[-1] if "@" in PROXY_URL else PROXY_URL
-        logger.info("[OK] HTTP session: stdlib requests via proxy %s", proxy_host)
+        if _USE_CURL_CFFI:
+            session = cffi_requests.Session(impersonate="chrome120")
+            session._impersonated = True
+            proxy_host = PROXY_URL.split("@")[-1] if "@" in PROXY_URL else PROXY_URL
+            logger.info(
+                "[OK] HTTP session: curl_cffi (Chrome 120) via proxy %s", proxy_host
+            )
+        else:
+            session = _make_stdlib_session()
+            session._impersonated = False
+            logger.warning(
+                "curl_cffi not installed — proxy session falling back to stdlib "
+                "requests, which Cloudflare now blocks ~100%%. Install curl_cffi."
+            )
         _proxy_self_test(session)
         return session
 
