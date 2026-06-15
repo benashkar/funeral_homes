@@ -129,6 +129,34 @@ def _load_cr_newspaper_urls():
     return by_site
 
 
+def _load_cr_publications():
+    """Return {site_id: [{slug, city, state}, ...]} from the Cherry Road manifest.
+
+    Cherry Road papers outsource their obituaries to a publication-scoped
+    Legacy.com page (legacy.com/us/obituaries/{slug}/browse) that aggregates
+    that paper's local-town obits — distinct from the county listing page.
+    Each county site_id can host several papers (different towns), so we keep
+    the per-paper city/state to attribute each obit to the right town (the
+    county scrape alone leaves death_city null/county-level, which is why
+    these small markets show stale in the Cherry Road health check).
+    """
+    try:
+        with open(CR_MANIFEST_PATH, "r", encoding="utf-8") as f:
+            cr = json.load(f)
+    except FileNotFoundError:
+        return {}
+    by_site = {}
+    for entry in cr:
+        slug = entry.get("legacy_publication_slug")
+        if slug:
+            by_site.setdefault(entry["site_id"], []).append({
+                "slug": slug,
+                "city": entry.get("city"),
+                "state": entry.get("state"),
+            })
+    return by_site
+
+
 def load_markets():
     """Load the markets list from config/markets.json.
 
@@ -140,10 +168,14 @@ def load_markets():
         markets = json.load(f)
 
     cr_urls = _load_cr_newspaper_urls()
+    cr_pubs = _load_cr_publications()
     for m in markets:
         urls = cr_urls.get(m["site_id"])
         if urls:
             m["newspaper_urls"] = urls
+        pubs = cr_pubs.get(m["site_id"])
+        if pubs:
+            m["cr_publications"] = pubs
 
     if SCRAPE_STATES:
         allowed = {s.strip().lower() for s in SCRAPE_STATES.split(",")}
@@ -222,6 +254,42 @@ def scrape_market(market, session):
                         detail.setdefault("funeral_home_detail", None)
                         detail.setdefault("photo_url", None)
                         obits.append(detail)
+            found = len(obits)
+
+        # Cherry Road publication pass: scrape each paper's publication-scoped
+        # Legacy page (legacy.com/us/obituaries/{slug}/browse) and attribute the
+        # obits to that paper's town. The county listing alone leaves death_city
+        # null/county-level, so these small-town markets read as stale in the CR
+        # health check even when the county was scraped. New obits only (the DB
+        # uses INSERT IGNORE); the one-time backfill re-stamps existing rows.
+        cr_publications = market.get("cr_publications") or []
+        if cr_publications:
+            seen_urls = {o.get("legacy_url") for o in obits}
+            for pub in cr_publications:
+                pub_url = f"https://www.legacy.com/us/obituaries/{pub['slug']}/browse"
+                pub_scraper = LegacyScraper(
+                    market, session=session, max_retries=MAX_RETRIES
+                )
+                pub_scraper.listing_urls = [pub_url]
+                pub_scraper.listing_url = pub_url
+                pub_obits = pub_scraper.scrape_today(known_urls=known_urls)
+                added = 0
+                for o in pub_obits:
+                    u = o.get("legacy_url")
+                    if u in seen_urls:
+                        continue
+                    # Attribute to the paper's town so the CR health check (which
+                    # matches death_city/death_state) registers this market fresh.
+                    o["death_city"] = pub.get("city")
+                    o["death_state"] = pub.get("state")
+                    seen_urls.add(u)
+                    obits.append(o)
+                    added += 1
+                if added:
+                    logger.info(
+                        "[%s] CR publication %s yielded %d new obits (town=%s)",
+                        site_id, pub["slug"], added, pub.get("city"),
+                    )
             found = len(obits)
 
         conn = get_connection()
