@@ -1,6 +1,75 @@
 # Legacy Obituary Scraper — Project Plan
 
-_Last updated: 2026-05-22 02:00 CT (full-auto v4 trigger + audit dashboard + kill switch)_
+_Last updated: 2026-06-15 (CR publication-page fix; proxy + curl_cffi recovery)_
+
+## 2026-06-13 — Total outage recovery: proxy creds + Cloudflare TLS fingerprint (RESOLVED & VERIFIED)
+
+### Symptom
+Pipeline collected **0 obituaries/day across all 51 states for ~7 days** (533K
+historical, 0 for the week). Daily report status looked alive (markets scraped)
+but `New obits` was ~0; va/ak/ut shard reported `BLOCKED 50% — IPs likely banned`.
+
+### Root cause (two stacked failures)
+1. **Dead proxy credential.** `PROXY_URL` used a lowercase country zone
+   `-zone-custom-country-us`. 711proxy's country code is **case-sensitive** —
+   lowercase authenticates (200 CONNECT) but returns **empty exit nodes**
+   (curl exit 52), so every scraper silently fell back to a direct datacenter IP
+   and got Cloudflare-walled. Correct zone is `-country-US` (uppercase).
+2. **Cloudflare now fingerprints the TLS client.** Even through a good
+   residential IP, plain `requests` gets a hard `403 "Just a moment..."` 100% of
+   the time (direct AND via proxy). `create_session()` PROXY mode used plain
+   `requests` by design ("curl_cffi-through-proxy is blocked") — no longer true.
+
+### Fix
+- Corrected `PROXY_URL` to `-country-US` on **17 Render services** (12
+  funeral-homes scrapers + 5 crime workers) via single-key env PUT.
+- **PR #32** — `utils/rate_limiter.create_session()` PROXY mode now uses
+  **curl_cffi Chrome-120 impersonation through the proxy** (the only path that
+  passes Legacy.com today: measured 7/7 markets vs 0/8 for plain requests).
+  Bumped `curl_cffi>=0.15.0` (its impersonated ClientHello now survives the
+  proxy CONNECT). Reproducer test added.
+
+### Status — RESOLVED & VERIFIED 2026-06-14
+Dashboard `/api/scrape-health`: all-states daily total **0 → 92,907 (06-13),
+71,669 (06-14)**. scraper-1 (va/ak/ut) confirmed non-zero. Fleet recovered.
+
+## 2026-06-15 — Cherry Road stale markets: scrape publication Legacy pages (SHIPPED, verifying)
+
+### Symptom
+Cherry Road Health Report: **24 RED markets** (never / 5+ days stale) — small CR
+towns (Ottawa KS, Corning AR, Hamburg IA, Claxton GA, …).
+
+### Root cause
+CR papers **outsource obituaries to a publication-scoped Legacy.com page**
+(`legacy.com/us/obituaries/{slug}/browse`) that the **county-only** scrape never
+hit. The CR health check matches `death_city = the paper's town`, but the county
+scrape leaves `death_city` null/county-level → the towns read as stale. The old
+`newspaper-direct` fallback was dead (outdated CMS selectors; those sites just
+redirect to the same Legacy publication page anyway). Confirmed the publication
+obits were **not in the DB at all** (backfill dry-run: 0 rows to re-stamp) —
+i.e. a coverage gap, not a mis-attribution of existing rows.
+
+### Fix (PR #33, merged; deployed to all 12 scrapers)
+- Discovered + stored `legacy_publication_slug` for **42 of 96** CR markets in
+  `config/cherry_road_markets.json` (validated against live obit content).
+- `scheduler/run_daily.py`: after the county scrape, scrape each CR paper's
+  publication page and stamp `death_city`/`death_state` = that paper's town so
+  obits register against the right market (`_load_cr_publications()` +
+  `cr_publications` augmentation + publication pass in `scrape_market`).
+- `scripts/backfill_cr_publication_cities.py`: one-time re-attribution of any
+  existing mis-citied rows (turned out to be a no-op — obits weren't in the DB;
+  the forward scrape is the real fix).
+- Mechanism: `legacy_scraper` already parses publication-scoped
+  `/us/obituaries/{slug}/name/` links; verified `ottawaherald` → real Ottawa
+  obits, `claycountycourier` → Corning obits.
+
+### Open follow-up
+- **15 of 24 RED markets** now have a working slug; the other ~9 (Marshall
+  Mountain Wave, The Chronicle-News, Tri-County News, Savannah Reporter, etc.)
+  have Legacy pages under slugs the name-based discovery didn't guess. Next:
+  derive slugs from each paper's own site (which links to its Legacy page) to
+  close the remaining markets.
+- Verifying RED → GREEN via a scraper-4 (ks,ar,…) forward run + `cherry_road_health.py`.
 
 ## Active Incident — Legacy.com Next.js Migration (RESOLVED, verifying)
 
