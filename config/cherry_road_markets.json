@@ -1,98 +1,621 @@
 [
-  {"newspaper": "The Clayton Record", "city": "Clayton", "state": "AL", "site_id": "al-barbour"},
-  {"newspaper": "Areawide News", "city": "Salem", "state": "AR", "site_id": "ar-fulton"},
-  {"newspaper": "Clay County Times-Democrat", "city": "Piggott", "state": "AR", "site_id": "ar-clay"},
-  {"newspaper": "Marshall Mountain Wave", "city": "Marshall", "state": "AR", "site_id": "ar-searcy"},
-  {"newspaper": "Pocahontas Star Herald", "city": "Pocahontas", "state": "AR", "site_id": "ar-randolph"},
-  {"newspaper": "Clay County Courier", "city": "Corning", "state": "AR", "site_id": "ar-clay"},
-  {"newspaper": "Bent County Democrat", "city": "Las Animas", "state": "CO", "site_id": "co-bent"},
-  {"newspaper": "La Junta Tribune-Democrat", "city": "La Junta", "state": "CO", "site_id": "co-otero"},
-  {"newspaper": "The Chronicle-News", "city": "Trinidad", "state": "CO", "site_id": "co-las-animas"},
-  {"newspaper": "The Star News", "city": "McCall", "state": "ID", "site_id": "id-valley"},
-  {"newspaper": "Cass County Star-Gazette", "city": "Virginia", "state": "IL", "site_id": "il-cass"},
-  {"newspaper": "Register Publications", "city": "Lawrenceburg", "state": "IN", "site_id": "in-dearborn"},
-  {"newspaper": "Tipton County Tribune", "city": "Tipton", "state": "IN", "site_id": "in-tipton"},
-  {"newspaper": "The Call-Leader", "city": "Elwood", "state": "IN", "site_id": "in-madison"},
-  {"newspaper": "The Alexandria Times-Tribune", "city": "Alexandria", "state": "IN", "site_id": "in-madison"},
-  {"newspaper": "The Hamburg Reporter", "city": "Hamburg", "state": "IA", "site_id": "ia-fremont"},
-  {"newspaper": "The Lindsborg News-Record", "city": "Lindsborg", "state": "KS", "site_id": "ks-mcpherson"},
-  {"newspaper": "Tri-County Tribune", "city": "Pratt", "state": "KS", "site_id": "ks-pratt"},
-  {"newspaper": "Tri-County Tribune", "city": "Greensburg", "state": "KS", "site_id": "ks-kiowa"},
-  {"newspaper": "Tri-County Tribune", "city": "St. John", "state": "KS", "site_id": "ks-stafford"},
-  {"newspaper": "The Miami County Republic", "city": "Paola", "state": "KS", "site_id": "ks-miami"},
-  {"newspaper": "Hiawatha World", "city": "Hiawatha", "state": "KS", "site_id": "ks-brown"},
-  {"newspaper": "Atchison Globe", "city": "Atchison", "state": "KS", "site_id": "ks-atchison"},
-  {"newspaper": "Butler County Times-Gazette", "city": "El Dorado", "state": "KS", "site_id": "ks-butler"},
-  {"newspaper": "McPherson Sentinel", "city": "McPherson", "state": "KS", "site_id": "ks-mcpherson"},
-  {"newspaper": "Leavenworth Times", "city": "Leavenworth", "state": "KS", "site_id": "ks-leavenworth"},
-  {"newspaper": "Dodge City Daily Globe", "city": "Dodge City", "state": "KS", "site_id": "ks-ford"},
-  {"newspaper": "The Newton Kansan", "city": "Newton", "state": "KS", "site_id": "ks-harvey"},
-  {"newspaper": "The Garden City Telegram", "city": "Garden City", "state": "KS", "site_id": "ks-finney"},
-  {"newspaper": "The Hays Daily News", "city": "Hays", "state": "KS", "site_id": "ks-ellis"},
-  {"newspaper": "Ottawa Herald", "city": "Ottawa", "state": "KS", "site_id": "ks-ottawa"},
-  {"newspaper": "The Wellington Daily News", "city": "Wellington", "state": "KS", "site_id": "ks-sumner"},
-  {"newspaper": "The Clinton Item", "city": "Clinton", "state": "MA", "site_id": "ma-worcester"},
-  {"newspaper": "The Grafton News", "city": "Grafton", "state": "MA", "site_id": "ma-grafton"},
-  {"newspaper": "The Landmark", "city": "Holden", "state": "MA", "site_id": "ma-holden"},
-  {"newspaper": "The Millbury-Sutton Chronicle", "city": "Millbury", "state": "MA", "site_id": "ma-millbury"},
-  {"newspaper": "The Arenac County Independent", "city": "Standish", "state": "MI", "site_id": "mi-arenac"},
-  {"newspaper": "The Ogemaw County Herald", "city": "West Branch", "state": "MI", "site_id": "mi-ogemaw"},
-  {"newspaper": "The Oscoda County Herald", "city": "Mio", "state": "MI", "site_id": "mi-oscoda"},
-  {"newspaper": "The Tower News", "city": "Tower", "state": "MN", "site_id": "mn-st-louis"},
-  {"newspaper": "The Cook County News Herald", "city": "Grand Marais", "state": "MN", "site_id": "mn-cook"},
-  {"newspaper": "The Hutchinson Station", "city": "Hutchinson", "state": "MN", "site_id": "mn-meeker"},
-  {"newspaper": "The Litchfield Rail", "city": "Litchfield", "state": "MN", "site_id": "mn-meeker"},
-  {"newspaper": "The Rainy Lake Gazette", "city": "International Falls", "state": "MN", "site_id": "mn-koochiching"},
-  {"newspaper": "The Sleepy Eye Herald-Dispatch", "city": "Sleepy Eye", "state": "MN", "site_id": "mn-brown"},
-  {"newspaper": "The Redwood Falls Gazette", "city": "Redwood Falls", "state": "MN", "site_id": "mn-redwood"},
-  {"newspaper": "The Granite Falls Advocate-Tribune", "city": "Granite Falls", "state": "MN", "site_id": "mn-chippewa"},
-  {"newspaper": "Montevideo American News", "city": "Montevideo", "state": "MN", "site_id": "mn-chippewa"},
-  {"newspaper": "Lake County Press", "city": "Two Harbors", "state": "MN", "site_id": "mn-lake"},
-  {"newspaper": "St. James Plaindealer", "city": "St. James", "state": "MN", "site_id": "mn-watonwan"},
-  {"newspaper": "Tri-County News", "city": "Eden Valley", "state": "MN", "site_id": "mn-meeker"},
-  {"newspaper": "Tri-County News", "city": "Kimball", "state": "MN", "site_id": "mn-stearns"},
-  {"newspaper": "Tri-County News", "city": "Watkins", "state": "MN", "site_id": "mn-meeker"},
-  {"newspaper": "Pike County News", "city": "Bowling Green", "state": "MO", "site_id": "mo-pike"},
-  {"newspaper": "The Elsberry Democrat", "city": "Elsberry", "state": "MO", "site_id": "mo-lincoln"},
-  {"newspaper": "The Hermann Advertiser-Courier", "city": "Hermann", "state": "MO", "site_id": "mo-montgomery"},
-  {"newspaper": "The Lake Gazette", "city": "Monroe City", "state": "MO", "site_id": "mo-monroe"},
-  {"newspaper": "Centralia Fireside Guard", "city": "Centralia", "state": "MO", "site_id": "mo-boone"},
-  {"newspaper": "The Vandalia Leader", "city": "Vandalia", "state": "MO", "site_id": "mo-audrain"},
-  {"newspaper": "The Lincoln County Journal", "city": "Troy", "state": "MO", "site_id": "mo-lincoln"},
-  {"newspaper": "Troy Free Press", "city": "Troy", "state": "MO", "site_id": "mo-lincoln"},
-  {"newspaper": "Savannah Reporter", "city": "Savannah", "state": "MO", "site_id": "mo-andrew"},
-  {"newspaper": "Moberly Monitor-Index", "city": "Moberly", "state": "MO", "site_id": "mo-randolph"},
-  {"newspaper": "Gladstone Dispatch", "city": "Gladstone", "state": "MO", "site_id": "mo-clay"},
-  {"newspaper": "Courier-Tribune", "city": "Liberty", "state": "MO", "site_id": "mo-clay"},
-  {"newspaper": "South Missourian News", "city": "Alton", "state": "MO", "site_id": "mo-oregon"},
-  {"newspaper": "The Marshall Democrat-News", "city": "Marshall", "state": "MO", "site_id": "mo-saline"},
-  {"newspaper": "The Examiner", "city": "Independence", "state": "MO", "site_id": "mo-jackson"},
-  {"newspaper": "Constitution-Tribune", "city": "Chillicothe", "state": "MO", "site_id": "mo-livingston"},
-  {"newspaper": "Boonville Daily-News", "city": "Boonville", "state": "MO", "site_id": "mo-cooper"},
-  {"newspaper": "Linn County Leader", "city": "Linneus", "state": "MO", "site_id": "mo-linn"},
-  {"newspaper": "Nebraska City News Press", "city": "Nebraska City", "state": "NE", "site_id": "ne-otoe"},
-  {"newspaper": "Syracuse Journal-Democrat", "city": "Syracuse", "state": "NE", "site_id": "ne-otoe"},
-  {"newspaper": "The Chronicle-Express", "city": "Penn Yan", "state": "NY", "site_id": "ny-yates"},
-  {"newspaper": "Southwest Messenger", "city": "Madison Township", "state": "OH", "site_id": "oh-madison-twp"},
-  {"newspaper": "Southeast Messenger", "city": "Grove City", "state": "OH", "site_id": "oh-grove-city"},
-  {"newspaper": "Times Bulletin Media", "city": "Van Wert", "state": "OH", "site_id": "oh-van-wert"},
-  {"newspaper": "Putnam County Sentinel", "city": "Ottawa", "state": "OH", "site_id": "oh-putnam"},
-  {"newspaper": "Paulding Progress", "city": "Paulding", "state": "OH", "site_id": "oh-paulding"},
-  {"newspaper": "The Delphos Herald", "city": "Delphos", "state": "OH", "site_id": "oh-allen"},
-  {"newspaper": "Monroe County Beacon", "city": "Woodsfield", "state": "OH", "site_id": "oh-monroe"},
-  {"newspaper": "The Shawnee News-Star", "city": "Shawnee", "state": "OK", "site_id": "ok-pottawatomie"},
-  {"newspaper": "The Ardmoreite", "city": "Ardmore", "state": "OK", "site_id": "ok-carter"},
-  {"newspaper": "Alice Echo News-Journal", "city": "Alice", "state": "TX", "site_id": "tx-jim-wells"},
-  {"newspaper": "Brownwood Bulletin", "city": "Brownwood", "state": "TX", "site_id": "tx-brown"},
-  {"newspaper": "Stephenville Empire-Tribune", "city": "Stephenville", "state": "TX", "site_id": "tx-erath"},
-  {"newspaper": "Glen Rose Reporter", "city": "Glen Rose", "state": "TX", "site_id": "tx-somervell"},
-  {"newspaper": "Sherman Herald-Democrat", "city": "Sherman", "state": "TX", "site_id": "tx-grayson"},
-  {"newspaper": "Midlothian Mirror", "city": "Midlothian", "state": "TX", "site_id": "tx-ellis"},
-  {"newspaper": "Palo Pinto Press", "city": "Mineral Wells", "state": "TX", "site_id": "tx-palo-pinto"},
-  {"newspaper": "Runnels County Register", "city": "Ballinger", "state": "TX", "site_id": "tx-runnels"},
-  {"newspaper": "Waxahachie Daily Light", "city": "Waxahachie", "state": "TX", "site_id": "tx-ellis"},
-  {"newspaper": "Vernal Express", "city": "Vernal", "state": "UT", "site_id": "ut-uintah"},
-  {"newspaper": "Uintah Basin Standard", "city": "Duchesne", "state": "UT", "site_id": "ut-duchesne"},
-  {"newspaper": "The Richfield Reaper", "city": "Richfield", "state": "UT", "site_id": "ut-sevier"},
-  {"newspaper": "Claxton Enterprise", "city": "Claxton", "state": "GA", "site_id": "ga-claxton", "newspaper_url": "https://www.claxtonenterprise.com/obituaries"}
+  {
+    "newspaper": "The Clayton Record",
+    "city": "Clayton",
+    "state": "AL",
+    "site_id": "al-barbour",
+    "legacy_publication_slug": "claytonrecord"
+  },
+  {
+    "newspaper": "Areawide News",
+    "city": "Salem",
+    "state": "AR",
+    "site_id": "ar-fulton",
+    "legacy_publication_slug": "areawidenews"
+  },
+  {
+    "newspaper": "Clay County Times-Democrat",
+    "city": "Piggott",
+    "state": "AR",
+    "site_id": "ar-clay"
+  },
+  {
+    "newspaper": "Marshall Mountain Wave",
+    "city": "Marshall",
+    "state": "AR",
+    "site_id": "ar-searcy"
+  },
+  {
+    "newspaper": "Pocahontas Star Herald",
+    "city": "Pocahontas",
+    "state": "AR",
+    "site_id": "ar-randolph"
+  },
+  {
+    "newspaper": "Clay County Courier",
+    "city": "Corning",
+    "state": "AR",
+    "site_id": "ar-clay",
+    "legacy_publication_slug": "claycountycourier"
+  },
+  {
+    "newspaper": "Bent County Democrat",
+    "city": "Las Animas",
+    "state": "CO",
+    "site_id": "co-bent"
+  },
+  {
+    "newspaper": "La Junta Tribune-Democrat",
+    "city": "La Junta",
+    "state": "CO",
+    "site_id": "co-otero",
+    "legacy_publication_slug": "lajuntatribunedemocrat"
+  },
+  {
+    "newspaper": "The Chronicle-News",
+    "city": "Trinidad",
+    "state": "CO",
+    "site_id": "co-las-animas"
+  },
+  {
+    "newspaper": "The Star News",
+    "city": "McCall",
+    "state": "ID",
+    "site_id": "id-valley"
+  },
+  {
+    "newspaper": "Cass County Star-Gazette",
+    "city": "Virginia",
+    "state": "IL",
+    "site_id": "il-cass"
+  },
+  {
+    "newspaper": "Register Publications",
+    "city": "Lawrenceburg",
+    "state": "IN",
+    "site_id": "in-dearborn",
+    "legacy_publication_slug": "registerpublications"
+  },
+  {
+    "newspaper": "Tipton County Tribune",
+    "city": "Tipton",
+    "state": "IN",
+    "site_id": "in-tipton",
+    "legacy_publication_slug": "tiptoncountytribune"
+  },
+  {
+    "newspaper": "The Call-Leader",
+    "city": "Elwood",
+    "state": "IN",
+    "site_id": "in-madison"
+  },
+  {
+    "newspaper": "The Alexandria Times-Tribune",
+    "city": "Alexandria",
+    "state": "IN",
+    "site_id": "in-madison",
+    "legacy_publication_slug": "alexandriatimes-tribune"
+  },
+  {
+    "newspaper": "The Hamburg Reporter",
+    "city": "Hamburg",
+    "state": "IA",
+    "site_id": "ia-fremont",
+    "legacy_publication_slug": "hamburgreporter"
+  },
+  {
+    "newspaper": "The Lindsborg News-Record",
+    "city": "Lindsborg",
+    "state": "KS",
+    "site_id": "ks-mcpherson",
+    "legacy_publication_slug": "lindsborgnewsrecord"
+  },
+  {
+    "newspaper": "Tri-County Tribune",
+    "city": "Pratt",
+    "state": "KS",
+    "site_id": "ks-pratt",
+    "legacy_publication_slug": "tricountytribune"
+  },
+  {
+    "newspaper": "Tri-County Tribune",
+    "city": "Greensburg",
+    "state": "KS",
+    "site_id": "ks-kiowa",
+    "legacy_publication_slug": "tricountytribune"
+  },
+  {
+    "newspaper": "Tri-County Tribune",
+    "city": "St. John",
+    "state": "KS",
+    "site_id": "ks-stafford",
+    "legacy_publication_slug": "tricountytribune"
+  },
+  {
+    "newspaper": "The Miami County Republic",
+    "city": "Paola",
+    "state": "KS",
+    "site_id": "ks-miami"
+  },
+  {
+    "newspaper": "Hiawatha World",
+    "city": "Hiawatha",
+    "state": "KS",
+    "site_id": "ks-brown"
+  },
+  {
+    "newspaper": "Atchison Globe",
+    "city": "Atchison",
+    "state": "KS",
+    "site_id": "ks-atchison"
+  },
+  {
+    "newspaper": "Butler County Times-Gazette",
+    "city": "El Dorado",
+    "state": "KS",
+    "site_id": "ks-butler",
+    "legacy_publication_slug": "butlercountytimesgazette"
+  },
+  {
+    "newspaper": "McPherson Sentinel",
+    "city": "McPherson",
+    "state": "KS",
+    "site_id": "ks-mcpherson",
+    "legacy_publication_slug": "mcphersonsentinel"
+  },
+  {
+    "newspaper": "Leavenworth Times",
+    "city": "Leavenworth",
+    "state": "KS",
+    "site_id": "ks-leavenworth",
+    "legacy_publication_slug": "leavenworthtimes"
+  },
+  {
+    "newspaper": "Dodge City Daily Globe",
+    "city": "Dodge City",
+    "state": "KS",
+    "site_id": "ks-ford"
+  },
+  {
+    "newspaper": "The Newton Kansan",
+    "city": "Newton",
+    "state": "KS",
+    "site_id": "ks-harvey"
+  },
+  {
+    "newspaper": "The Garden City Telegram",
+    "city": "Garden City",
+    "state": "KS",
+    "site_id": "ks-finney"
+  },
+  {
+    "newspaper": "The Hays Daily News",
+    "city": "Hays",
+    "state": "KS",
+    "site_id": "ks-ellis"
+  },
+  {
+    "newspaper": "Ottawa Herald",
+    "city": "Ottawa",
+    "state": "KS",
+    "site_id": "ks-ottawa",
+    "legacy_publication_slug": "ottawaherald"
+  },
+  {
+    "newspaper": "The Wellington Daily News",
+    "city": "Wellington",
+    "state": "KS",
+    "site_id": "ks-sumner",
+    "legacy_publication_slug": "wellingtondailynews"
+  },
+  {
+    "newspaper": "The Clinton Item",
+    "city": "Clinton",
+    "state": "MA",
+    "site_id": "ma-worcester",
+    "legacy_publication_slug": "clintonitem"
+  },
+  {
+    "newspaper": "The Grafton News",
+    "city": "Grafton",
+    "state": "MA",
+    "site_id": "ma-grafton"
+  },
+  {
+    "newspaper": "The Landmark",
+    "city": "Holden",
+    "state": "MA",
+    "site_id": "ma-holden"
+  },
+  {
+    "newspaper": "The Millbury-Sutton Chronicle",
+    "city": "Millbury",
+    "state": "MA",
+    "site_id": "ma-millbury"
+  },
+  {
+    "newspaper": "The Arenac County Independent",
+    "city": "Standish",
+    "state": "MI",
+    "site_id": "mi-arenac"
+  },
+  {
+    "newspaper": "The Ogemaw County Herald",
+    "city": "West Branch",
+    "state": "MI",
+    "site_id": "mi-ogemaw"
+  },
+  {
+    "newspaper": "The Oscoda County Herald",
+    "city": "Mio",
+    "state": "MI",
+    "site_id": "mi-oscoda"
+  },
+  {
+    "newspaper": "The Tower News",
+    "city": "Tower",
+    "state": "MN",
+    "site_id": "mn-st-louis"
+  },
+  {
+    "newspaper": "The Cook County News Herald",
+    "city": "Grand Marais",
+    "state": "MN",
+    "site_id": "mn-cook"
+  },
+  {
+    "newspaper": "The Hutchinson Station",
+    "city": "Hutchinson",
+    "state": "MN",
+    "site_id": "mn-meeker",
+    "legacy_publication_slug": "hutchinsonstation"
+  },
+  {
+    "newspaper": "The Litchfield Rail",
+    "city": "Litchfield",
+    "state": "MN",
+    "site_id": "mn-meeker",
+    "legacy_publication_slug": "litchfieldrail"
+  },
+  {
+    "newspaper": "The Rainy Lake Gazette",
+    "city": "International Falls",
+    "state": "MN",
+    "site_id": "mn-koochiching",
+    "legacy_publication_slug": "rainylakegazette"
+  },
+  {
+    "newspaper": "The Sleepy Eye Herald-Dispatch",
+    "city": "Sleepy Eye",
+    "state": "MN",
+    "site_id": "mn-brown"
+  },
+  {
+    "newspaper": "The Redwood Falls Gazette",
+    "city": "Redwood Falls",
+    "state": "MN",
+    "site_id": "mn-redwood",
+    "legacy_publication_slug": "redwoodfallsgazette"
+  },
+  {
+    "newspaper": "The Granite Falls Advocate-Tribune",
+    "city": "Granite Falls",
+    "state": "MN",
+    "site_id": "mn-chippewa"
+  },
+  {
+    "newspaper": "Montevideo American News",
+    "city": "Montevideo",
+    "state": "MN",
+    "site_id": "mn-chippewa"
+  },
+  {
+    "newspaper": "Lake County Press",
+    "city": "Two Harbors",
+    "state": "MN",
+    "site_id": "mn-lake",
+    "legacy_publication_slug": "lakecountypress"
+  },
+  {
+    "newspaper": "St. James Plaindealer",
+    "city": "St. James",
+    "state": "MN",
+    "site_id": "mn-watonwan"
+  },
+  {
+    "newspaper": "Tri-County News",
+    "city": "Eden Valley",
+    "state": "MN",
+    "site_id": "mn-meeker"
+  },
+  {
+    "newspaper": "Tri-County News",
+    "city": "Kimball",
+    "state": "MN",
+    "site_id": "mn-stearns"
+  },
+  {
+    "newspaper": "Tri-County News",
+    "city": "Watkins",
+    "state": "MN",
+    "site_id": "mn-meeker"
+  },
+  {
+    "newspaper": "Pike County News",
+    "city": "Bowling Green",
+    "state": "MO",
+    "site_id": "mo-pike",
+    "legacy_publication_slug": "pikecountynews"
+  },
+  {
+    "newspaper": "The Elsberry Democrat",
+    "city": "Elsberry",
+    "state": "MO",
+    "site_id": "mo-lincoln",
+    "legacy_publication_slug": "elsberrydemocrat"
+  },
+  {
+    "newspaper": "The Hermann Advertiser-Courier",
+    "city": "Hermann",
+    "state": "MO",
+    "site_id": "mo-montgomery",
+    "legacy_publication_slug": "hermannadvertisercourier"
+  },
+  {
+    "newspaper": "The Lake Gazette",
+    "city": "Monroe City",
+    "state": "MO",
+    "site_id": "mo-monroe",
+    "legacy_publication_slug": "lakegazette"
+  },
+  {
+    "newspaper": "Centralia Fireside Guard",
+    "city": "Centralia",
+    "state": "MO",
+    "site_id": "mo-boone"
+  },
+  {
+    "newspaper": "The Vandalia Leader",
+    "city": "Vandalia",
+    "state": "MO",
+    "site_id": "mo-audrain",
+    "legacy_publication_slug": "vandalialeader"
+  },
+  {
+    "newspaper": "The Lincoln County Journal",
+    "city": "Troy",
+    "state": "MO",
+    "site_id": "mo-lincoln",
+    "legacy_publication_slug": "lincolncountyjournal"
+  },
+  {
+    "newspaper": "Troy Free Press",
+    "city": "Troy",
+    "state": "MO",
+    "site_id": "mo-lincoln",
+    "legacy_publication_slug": "troyfreepress"
+  },
+  {
+    "newspaper": "Savannah Reporter",
+    "city": "Savannah",
+    "state": "MO",
+    "site_id": "mo-andrew"
+  },
+  {
+    "newspaper": "Moberly Monitor-Index",
+    "city": "Moberly",
+    "state": "MO",
+    "site_id": "mo-randolph"
+  },
+  {
+    "newspaper": "Gladstone Dispatch",
+    "city": "Gladstone",
+    "state": "MO",
+    "site_id": "mo-clay",
+    "legacy_publication_slug": "gladstonedispatch"
+  },
+  {
+    "newspaper": "Courier-Tribune",
+    "city": "Liberty",
+    "state": "MO",
+    "site_id": "mo-clay"
+  },
+  {
+    "newspaper": "South Missourian News",
+    "city": "Alton",
+    "state": "MO",
+    "site_id": "mo-oregon",
+    "legacy_publication_slug": "southmissouriannews"
+  },
+  {
+    "newspaper": "The Marshall Democrat-News",
+    "city": "Marshall",
+    "state": "MO",
+    "site_id": "mo-saline"
+  },
+  {
+    "newspaper": "The Examiner",
+    "city": "Independence",
+    "state": "MO",
+    "site_id": "mo-jackson"
+  },
+  {
+    "newspaper": "Constitution-Tribune",
+    "city": "Chillicothe",
+    "state": "MO",
+    "site_id": "mo-livingston"
+  },
+  {
+    "newspaper": "Boonville Daily-News",
+    "city": "Boonville",
+    "state": "MO",
+    "site_id": "mo-cooper",
+    "legacy_publication_slug": "boonvilledailynews"
+  },
+  {
+    "newspaper": "Linn County Leader",
+    "city": "Linneus",
+    "state": "MO",
+    "site_id": "mo-linn",
+    "legacy_publication_slug": "linncountyleader"
+  },
+  {
+    "newspaper": "Nebraska City News Press",
+    "city": "Nebraska City",
+    "state": "NE",
+    "site_id": "ne-otoe"
+  },
+  {
+    "newspaper": "Syracuse Journal-Democrat",
+    "city": "Syracuse",
+    "state": "NE",
+    "site_id": "ne-otoe"
+  },
+  {
+    "newspaper": "The Chronicle-Express",
+    "city": "Penn Yan",
+    "state": "NY",
+    "site_id": "ny-yates",
+    "legacy_publication_slug": "chronicle-express"
+  },
+  {
+    "newspaper": "Southwest Messenger",
+    "city": "Madison Township",
+    "state": "OH",
+    "site_id": "oh-madison-twp"
+  },
+  {
+    "newspaper": "Southeast Messenger",
+    "city": "Grove City",
+    "state": "OH",
+    "site_id": "oh-grove-city"
+  },
+  {
+    "newspaper": "Times Bulletin Media",
+    "city": "Van Wert",
+    "state": "OH",
+    "site_id": "oh-van-wert"
+  },
+  {
+    "newspaper": "Putnam County Sentinel",
+    "city": "Ottawa",
+    "state": "OH",
+    "site_id": "oh-putnam"
+  },
+  {
+    "newspaper": "Paulding Progress",
+    "city": "Paulding",
+    "state": "OH",
+    "site_id": "oh-paulding"
+  },
+  {
+    "newspaper": "The Delphos Herald",
+    "city": "Delphos",
+    "state": "OH",
+    "site_id": "oh-allen",
+    "legacy_publication_slug": "delphosherald"
+  },
+  {
+    "newspaper": "Monroe County Beacon",
+    "city": "Woodsfield",
+    "state": "OH",
+    "site_id": "oh-monroe"
+  },
+  {
+    "newspaper": "The Shawnee News-Star",
+    "city": "Shawnee",
+    "state": "OK",
+    "site_id": "ok-pottawatomie"
+  },
+  {
+    "newspaper": "The Ardmoreite",
+    "city": "Ardmore",
+    "state": "OK",
+    "site_id": "ok-carter",
+    "legacy_publication_slug": "ardmoreite"
+  },
+  {
+    "newspaper": "Alice Echo News-Journal",
+    "city": "Alice",
+    "state": "TX",
+    "site_id": "tx-jim-wells"
+  },
+  {
+    "newspaper": "Brownwood Bulletin",
+    "city": "Brownwood",
+    "state": "TX",
+    "site_id": "tx-brown"
+  },
+  {
+    "newspaper": "Stephenville Empire-Tribune",
+    "city": "Stephenville",
+    "state": "TX",
+    "site_id": "tx-erath"
+  },
+  {
+    "newspaper": "Glen Rose Reporter",
+    "city": "Glen Rose",
+    "state": "TX",
+    "site_id": "tx-somervell"
+  },
+  {
+    "newspaper": "Sherman Herald-Democrat",
+    "city": "Sherman",
+    "state": "TX",
+    "site_id": "tx-grayson"
+  },
+  {
+    "newspaper": "Midlothian Mirror",
+    "city": "Midlothian",
+    "state": "TX",
+    "site_id": "tx-ellis",
+    "legacy_publication_slug": "midlothianmirror"
+  },
+  {
+    "newspaper": "Palo Pinto Press",
+    "city": "Mineral Wells",
+    "state": "TX",
+    "site_id": "tx-palo-pinto",
+    "legacy_publication_slug": "palopintopress"
+  },
+  {
+    "newspaper": "Runnels County Register",
+    "city": "Ballinger",
+    "state": "TX",
+    "site_id": "tx-runnels",
+    "legacy_publication_slug": "runnelscountyregister"
+  },
+  {
+    "newspaper": "Waxahachie Daily Light",
+    "city": "Waxahachie",
+    "state": "TX",
+    "site_id": "tx-ellis"
+  },
+  {
+    "newspaper": "Vernal Express",
+    "city": "Vernal",
+    "state": "UT",
+    "site_id": "ut-uintah"
+  },
+  {
+    "newspaper": "Uintah Basin Standard",
+    "city": "Duchesne",
+    "state": "UT",
+    "site_id": "ut-duchesne"
+  },
+  {
+    "newspaper": "The Richfield Reaper",
+    "city": "Richfield",
+    "state": "UT",
+    "site_id": "ut-sevier",
+    "legacy_publication_slug": "richfieldreaper"
+  },
+  {
+    "newspaper": "Claxton Enterprise",
+    "city": "Claxton",
+    "state": "GA",
+    "site_id": "ga-claxton",
+    "newspaper_url": "https://www.claxtonenterprise.com/obituaries",
+    "legacy_publication_slug": "claxtonenterprise"
+  }
 ]
