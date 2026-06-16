@@ -17,13 +17,15 @@
     "newspaper": "Clay County Times-Democrat",
     "city": "Piggott",
     "state": "AR",
-    "site_id": "ar-clay"
+    "site_id": "ar-clay",
+    "legacy_publication_slug": "cctimesdemocrat"
   },
   {
     "newspaper": "Marshall Mountain Wave",
     "city": "Marshall",
     "state": "AR",
-    "site_id": "ar-searcy"
+    "site_id": "ar-searcy",
+    "legacy_publication_slug": "emountainwave"
   },
   {
     "newspaper": "Pocahontas Star Herald",
@@ -42,7 +44,8 @@
     "newspaper": "Bent County Democrat",
     "city": "Las Animas",
     "state": "CO",
-    "site_id": "co-bent"
+    "site_id": "co-bent",
+    "legacy_publication_slug": "bcdemocratonline"
   },
   {
     "newspaper": "La Junta Tribune-Democrat",
@@ -55,7 +58,8 @@
     "newspaper": "The Chronicle-News",
     "city": "Trinidad",
     "state": "CO",
-    "site_id": "co-las-animas"
+    "site_id": "co-las-animas",
+    "legacy_publication_slug": "thechronicle-news"
   },
   {
     "newspaper": "The Star News",
@@ -231,7 +235,8 @@
     "newspaper": "The Millbury-Sutton Chronicle",
     "city": "Millbury",
     "state": "MA",
-    "site_id": "ma-millbury"
+    "site_id": "ma-millbury",
+    "legacy_publication_slug": "millburysutton"
   },
   {
     "newspaper": "The Arenac County Independent",
@@ -249,7 +254,8 @@
     "newspaper": "The Oscoda County Herald",
     "city": "Mio",
     "state": "MI",
-    "site_id": "mi-oscoda"
+    "site_id": "mi-oscoda",
+    "legacy_publication_slug": "oscodaherald"
   },
   {
     "newspaper": "The Tower News",
@@ -326,19 +332,22 @@
     "newspaper": "Tri-County News",
     "city": "Eden Valley",
     "state": "MN",
-    "site_id": "mn-meeker"
+    "site_id": "mn-meeker",
+    "legacy_publication_slug": "tricountynewsmn"
   },
   {
     "newspaper": "Tri-County News",
     "city": "Kimball",
     "state": "MN",
-    "site_id": "mn-stearns"
+    "site_id": "mn-stearns",
+    "legacy_publication_slug": "tricountynewsmn"
   },
   {
     "newspaper": "Tri-County News",
     "city": "Watkins",
     "state": "MN",
-    "site_id": "mn-meeker"
+    "site_id": "mn-meeker",
+    "legacy_publication_slug": "tricountynewsmn"
   },
   {
     "newspaper": "Pike County News",
@@ -399,7 +408,8 @@
     "newspaper": "Savannah Reporter",
     "city": "Savannah",
     "state": "MO",
-    "site_id": "mo-andrew"
+    "site_id": "mo-andrew",
+    "legacy_publication_slug": "savrep"
   },
   {
     "newspaper": "Moberly Monitor-Index",
@@ -469,7 +479,8 @@
     "newspaper": "Syracuse Journal-Democrat",
     "city": "Syracuse",
     "state": "NE",
-    "site_id": "ne-otoe"
+    "site_id": "ne-otoe",
+    "legacy_publication_slug": "journaldemocrat"
   },
   {
     "newspaper": "The Chronicle-Express",
@@ -482,7 +493,8 @@
     "newspaper": "Southwest Messenger",
     "city": "Madison Township",
     "state": "OH",
-    "site_id": "oh-madison-twp"
+    "site_id": "oh-madison-twp",
+    "legacy_publication_slug": "swmessenger"
   },
   {
     "newspaper": "Southeast Messenger",
