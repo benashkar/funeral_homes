@@ -1,6 +1,45 @@
 # Legacy Obituary Scraper — Project Plan
 
-_Last updated: 2026-06-15 (CR publication-page fix; proxy + curl_cffi recovery)_
+_Last updated: 2026-06-18 (CR slug coverage 94/96; self-healing drift + proxy-health watchdogs)_
+
+## 2026-06-17/18 — Self-healing gaps + monitoring watchdogs + CR slug completion
+
+### Self-healing diagnosis (the "why is it not working" thread)
+- The 3 `cr-rescue` services (Cherry Road priority re-scrapers) were stuck on a
+  **pre-curl_cffi commit** (`autoDeploy=OFF`, never redeployed after PR #32) and
+  reported `BLOCKED 100%` for days while the main fleet was healthy. Fixed:
+  redeployed all 3 to master → verified **0 → 405 found** (cr-rescue-1).
+- Clarified the Layer-3 self-healing trigger (`trig_01EzPjGTvjG6cK9BW5NDY3bz`,
+  22:00 UTC): it IS running, and its alerts reach the same Telegram chat
+  (`523535187`, Biscotcho bot `utils/telegram.py`) as the scrape reports. It
+  only auto-PRs **Legacy URL slug rot** — it's forbidden from touching
+  code/proxy/deploy config, so the recent regressions correctly produced **no
+  PR** (Recipe A escalation only). That gap is the reason it "looked broken."
+
+### New watchdogs (close the gaps self-healing can't)
+- **Deploy-drift check** (PR #36, refined #38): `scripts/check_deploy_drift.py`
+  compares every service's live deploy commit vs `origin/master` and Telegrams
+  only when the missing commits touch **runtime paths** (scraper/scheduler/utils/
+  config/dashboard/sql/requirements/Dockerfile, via the GitHub compare API) —
+  ignores docs/script-only lag. Dedicated cron **`funeral-homes-deploy-drift`**
+  (`crn-d8pot3v7f7vs73d6r310`, 22:45 UTC, autoDeploy=ON). Caught 8 drifted
+  services on first run.
+- **Proxy-health probe** (PR #40): `scripts/check_proxy_health.py`. 711proxy has
+  **no balance API**, so this detects the *symptom* of a depleted/suspended
+  proxy (fleet-wide non-Cloudflare failure through PROXY_URL) and Telegrams a
+  "PROXY DOWN — out of GB" alert before the fleet goes dark (guards the
+  early-June outage mode). Cron **`funeral-homes-proxy-health`**
+  (`crn-d8ppqcegvqtc739e1ms0`, 13:30 UTC, autoDeploy=ON).
+- Cross-project rule saved to `global-config/CLAUDE.md` (Layer 3 Blind Spots:
+  deploy drift + alert reachability).
+
+### Cherry Road publication-slug completion
+- Two parallel discovery agents + live-obit validation found the remaining
+  non-obvious Legacy publication slugs (PRs #33→#35→#39). **Coverage 54 → 94/96.**
+  Remaining 2: `mn-st-louis`/Tower News (no Legacy page) and `tx-brown`/Brownwood
+  (empty page — deferred recheck).
+- Triggered an immediate full-fleet forward run (12 scrapers) to land the new
+  markets rather than waiting for cron; metrics pending run completion.
 
 ## 2026-06-13 — Total outage recovery: proxy creds + Cloudflare TLS fingerprint (RESOLVED & VERIFIED)
 
