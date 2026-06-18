@@ -276,7 +276,8 @@
     "newspaper": "The Tower News",
     "city": "Tower",
     "state": "MN",
-    "site_id": "mn-st-louis"
+    "site_id": "mn-st-louis",
+    "legacy_publication_slug": "thetowernews"
   },
   {
     "newspaper": "The Cook County News Herald",
