@@ -1,6 +1,67 @@
 # Legacy Obituary Scraper — Project Plan
 
-_Last updated: 2026-06-18 (CR slug coverage 94/96; self-healing drift + proxy-health watchdogs)_
+_Last updated: 2026-06-18 (backlog wave: town-split, retry tuning, overload audit, keep-warm; proxy GB re-depleted)_
+
+## 2026-06-18 — Backlog wave (parallel sub-agents) + proxy GB re-depletion
+
+Worked the post-recovery backlog as parallel sub-agent tasks. Merged PRs #39–#45.
+
+### Shipped
+- **CR slug coverage 54 → 95/96** (#39 batch of 40 + #44 Tower News `thetowernews`).
+  Only `tx-brown`/Brownwood remains county-only — its Legacy page (`brownwoodtx`)
+  renders obits **client-side via Next.js**, so the server HTML has 0 obit links;
+  not scrapable without headless. Brown County is covered by the county scrape.
+- **Block-rate tuning (#42):** `PROXY_MIN_RETRIES 8 → 12`. Analysis back-solved the
+  real per-IP Cloudflare block prob at **0.74–0.88 on half the fleet** (not the
+  modeled 0.6), so 8 retries left 9–37% blocked on the worst shards (ia/mn/ma 36%,
+  ms/pa/co 20%). 12 cuts that to ~3–6%; extra GB only on already-blocked markets.
+  Follow-ups (not yet built): per-big-county retries (harris/hennepin/philadelphia)
+  + adaptive-per-shard floor.
+- **Tri-County town-split + dead-code removal (#43):** removed the obsolete
+  `newspaper_direct.py` path (stale CMS selectors; those sites just redirect to
+  Legacy). Fixed the shared-slug bug where one publication slug serving 3 MN towns
+  (`tricountynewsmn` → Kimball/Watkins/Eden Valley) only credited the first town:
+  now scrape each slug once and attribute each obit by its own parsed `death_city`
+  → obit_text scan → primary-town fallback.
+- **Keep-warm cron (#9):** `cr-dashboard-keepwarm` (`crn-d8pr2hog4nts7388i390`,
+  `*/12 * * * *`) pings `/health-status.json` so the dashboard (starter web service,
+  spins down after ~15 min) is warm when the Layer-3 self-healing agent fetches it
+  at 22:00 UTC. Root cause of "self-healing silently no-ops": cold-start > fetch timeout.
+- **Test fix (#45):** #42 had left `test_polite_get_in_proxy_mode_does_min_8_retries`
+  asserting 8; now references the `PROXY_MIN_RETRIES` constant.
+
+### Audited (no change needed)
+- **Scrapers 2 & 3 overload:** scraper-2 ~5.1h, scraper-3 ~5.4–6.0h runs — well under
+  the 12h cron limit (≈50–58% headroom); 298/278 markets, below the ~320 split
+  threshold. Re-check trigger: any run >8h or markets >320; split plan ready
+  (move `mo,mi` → scraper-13 first).
+
+### Designed (awaiting go)
+- **`/person/` field recovery (#5):** listing-card `funeral_home`/`obit_text` is only
+  in-memory during a scrape, so backfills/re-fetches of `/person/` URLs NULL both.
+  Design: a `listing_metadata` side-table (PK `legacy_url`, `person_id` indexed) on
+  db99, UPSERTed at first sight; live parser + backfills recover from it. Needs db99
+  `innodb_default_row_format` confirmed before build (PK width).
+
+### ⚠️ Incident: proxy GB re-depleted mid-session (407)
+Heavy session usage (12 full fleet runs + ~80 slug validations through residential
+proxy) depleted the 711proxy GB balance again → gateway returns **407** to the valid
+creds, identical to the early-June outage. **The new `check_proxy_health.py` probe
+caught it (0/6 canaries healthy → Telegram alert) — first real catch, working as
+designed.** The 12 forward runs triggered for the slug-landing metrics were
+compromised mid-flight (proxy died), so those metrics need a clean re-run after GB
+reload. **Action: reload GB on the 711proxy dashboard (ben.ashkar@locallabs.com) and
+allocate to the `USER981811-zone-custom` zone.** Fleet code (town-split + cleanup) is
+on master but the redeploy + clean metric re-run are held until the proxy is back.
+
+### Open follow-ups
+- Reload 711proxy GB (BLOCKER) → then redeploy fleet + re-run for clean landing metrics.
+- `mn-st-louis` county listing slug is wrong (`st-louis-county` 404s; live page is
+  `duluth`) — quick markets.json fix.
+- Decide on building the #5 `/person/` backfill.
+- #4 follow-ups: per-big-county retries + adaptive retry floor.
+
+
 
 ## 2026-06-17/18 — Self-healing gaps + monitoring watchdogs + CR slug completion
 
