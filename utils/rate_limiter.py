@@ -43,7 +43,7 @@ USER_AGENT = USER_AGENTS[0]  # Default for create_session
 MIN_DELAY = 6.0       # seconds between ANY two requests (global, direct mode)
 MIN_DELAY_PROXY = 1.0 # rotating-gateway IPs change per request; no per-IP politeness needed
 MAX_RETRIES = 4       # total attempts including first try
-PROXY_MIN_RETRIES = 8 # with rotating proxy ~60% Cloudflare-flagged, 8 attempts → ~1.7% miss
+PROXY_MIN_RETRIES = 12 # measured per-IP CF-block rate is 0.74-0.88 on half the fleet (not 0.6); 8 attempts left 9-37% of bad-shard markets blocked. 12 cuts p=0.74 miss 9%->2.7%, p=0.82 20%->6.5%. Extra GB only spent on already-blocked markets.
 INITIAL_BACKOFF = 60  # seconds to wait on first 403/429/503
 
 # Residential proxy support — set PROXY_URL env var to route requests
