@@ -21,7 +21,6 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 load_dotenv()
 
 from scraper.legacy_scraper import LegacyScraper
-from scraper.newspaper_direct import fetch_newspaper_obit_urls, parse_newspaper_obit_detail
 from scraper.db_writer import get_connection, batch_insert_obits, log_run, get_known_urls_for_site, flag_bad_and_dupes, upsert_funeral_home, enrich_funeral_home, ensure_schema, find_quiet_markets
 from utils.logger import get_logger
 from utils.rate_limiter import create_session, MAX_RETRIES
@@ -110,25 +109,6 @@ CR_MANIFEST_PATH = os.path.join(
 )
 
 
-def _load_cr_newspaper_urls():
-    """Return {site_id: [newspaper_url, ...]} from the Cherry Road manifest.
-
-    Multiple newspapers can serve the same county (different cities), so
-    each site_id may have multiple URLs to try.
-    """
-    try:
-        with open(CR_MANIFEST_PATH, "r", encoding="utf-8") as f:
-            cr = json.load(f)
-    except FileNotFoundError:
-        return {}
-    by_site = {}
-    for entry in cr:
-        url = entry.get("newspaper_url")
-        if url:
-            by_site.setdefault(entry["site_id"], []).append(url)
-    return by_site
-
-
 def _load_cr_publications():
     """Return {site_id: [{slug, city, state}, ...]} from the Cherry Road manifest.
 
@@ -160,19 +140,15 @@ def _load_cr_publications():
 def load_markets():
     """Load the markets list from config/markets.json.
 
-    Augments each market with `newspaper_urls` (list) from the Cherry
+    Augments each market with `cr_publications` (list) from the Cherry
     Road manifest when applicable. If SCRAPE_STATES env var is set,
     filters to only those states.
     """
     with open(MARKETS_PATH, "r", encoding="utf-8") as f:
         markets = json.load(f)
 
-    cr_urls = _load_cr_newspaper_urls()
     cr_pubs = _load_cr_publications()
     for m in markets:
-        urls = cr_urls.get(m["site_id"])
-        if urls:
-            m["newspaper_urls"] = urls
         pubs = cr_pubs.get(m["site_id"])
         if pubs:
             m["cr_publications"] = pubs
@@ -228,34 +204,6 @@ def scrape_market(market, session):
         obits = scraper.scrape_today(known_urls=known_urls)
         found = len(obits)
 
-        # Newspaper-direct fallback: if Legacy.com gave us nothing AND this
-        # market has a configured newspaper website, try fetching obits
-        # from there. This bypasses Legacy.com entirely for Cherry Road papers.
-        newspaper_urls = market.get("newspaper_urls") or []
-        if found == 0 and newspaper_urls:
-            for np_url in newspaper_urls:
-                np_obit_urls = fetch_newspaper_obit_urls(session, np_url)
-                np_obit_urls = [u for u in np_obit_urls if u not in known_urls]
-                if not np_obit_urls:
-                    continue
-                logger.info(
-                    "[%s] newspaper-direct yielded %d new URLs from %s",
-                    site_id, len(np_obit_urls), np_url,
-                )
-                for u in np_obit_urls:
-                    detail = parse_newspaper_obit_detail(session, u)
-                    if detail:
-                        # Match LegacyScraper output schema
-                        detail.setdefault("published_date", None)
-                        detail.setdefault("death_date", None)
-                        detail.setdefault("death_city", None)
-                        detail.setdefault("death_state", None)
-                        detail.setdefault("funeral_home", None)
-                        detail.setdefault("funeral_home_detail", None)
-                        detail.setdefault("photo_url", None)
-                        obits.append(detail)
-            found = len(obits)
-
         # Cherry Road publication pass: scrape each paper's publication-scoped
         # Legacy page (legacy.com/us/obituaries/{slug}/browse) and attribute the
         # obits to that paper's town. The county listing alone leaves death_city
@@ -265,30 +213,74 @@ def scrape_market(market, session):
         cr_publications = market.get("cr_publications") or []
         if cr_publications:
             seen_urls = {o.get("legacy_url") for o in obits}
+            # A single Legacy publication slug can be shared by several towns
+            # (e.g. tricountynewsmn serves Kimball/Watkins/Eden Valley). Group
+            # by slug so we scrape each slug ONCE; scraping per-pub would let the
+            # first town's pass swallow every obit (dedup by URL) and starve the
+            # other towns. The first pub for a slug is its primary/fallback town.
+            pubs_by_slug = {}
             for pub in cr_publications:
-                pub_url = f"https://www.legacy.com/us/obituaries/{pub['slug']}/browse"
+                pubs_by_slug.setdefault(pub["slug"], []).append(pub)
+
+            for slug, slug_pubs in pubs_by_slug.items():
+                pub_url = f"https://www.legacy.com/us/obituaries/{slug}/browse"
                 pub_scraper = LegacyScraper(
                     market, session=session, max_retries=MAX_RETRIES
                 )
                 pub_scraper.listing_urls = [pub_url]
                 pub_scraper.listing_url = pub_url
                 pub_obits = pub_scraper.scrape_today(known_urls=known_urls)
-                added = 0
+
+                # Candidate towns for this slug, primary (first) town first.
+                primary = slug_pubs[0]
+                # Map lower-cased candidate town name -> its pub entry, so we can
+                # honor an obit's own parsed death_city when the slug is shared.
+                town_lookup = {
+                    (p.get("city") or "").strip().lower(): p
+                    for p in slug_pubs
+                    if p.get("city")
+                }
+
+                # Per-town tally just for the log line.
+                added_by_town = defaultdict(int)
                 for o in pub_obits:
                     u = o.get("legacy_url")
                     if u in seen_urls:
                         continue
-                    # Attribute to the paper's town so the CR health check (which
-                    # matches death_city/death_state) registers this market fresh.
-                    o["death_city"] = pub.get("city")
-                    o["death_state"] = pub.get("state")
+
+                    # Decide which town this obit belongs to. For single-town
+                    # slugs there's only one candidate, so this always picks the
+                    # primary (behavior unchanged). For shared slugs we try to
+                    # infer the real town from the obit's own data before falling
+                    # back to the primary.
+                    chosen = primary
+                    if len(slug_pubs) > 1:
+                        # The scraper parses a death_city off the obit's own
+                        # detail page; if it names one of our candidate towns,
+                        # trust it. Otherwise scan the obit text for a town name.
+                        parsed_city = (o.get("death_city") or "").strip().lower()
+                        if parsed_city and parsed_city in town_lookup:
+                            chosen = town_lookup[parsed_city]
+                        else:
+                            obit_text = (o.get("obit_text") or "").lower()
+                            for town_key, pub_entry in town_lookup.items():
+                                if town_key and town_key in obit_text:
+                                    chosen = pub_entry
+                                    break
+                        # else: leave `chosen` as the primary town fallback.
+
+                    # Stamp the chosen town so the CR health check (which matches
+                    # death_city/death_state) registers each town as fresh.
+                    o["death_city"] = chosen.get("city")
+                    o["death_state"] = chosen.get("state")
                     seen_urls.add(u)
                     obits.append(o)
-                    added += 1
-                if added:
+                    added_by_town[chosen.get("city")] += 1
+
+                for town, n in added_by_town.items():
                     logger.info(
                         "[%s] CR publication %s yielded %d new obits (town=%s)",
-                        site_id, pub["slug"], added, pub.get("city"),
+                        site_id, slug, n, town,
                     )
             found = len(obits)
 
