@@ -31,6 +31,14 @@ logger = get_logger("deploy_drift")
 REPO = "benashkar/funeral_homes"
 RENDER_API = "https://api.render.com/v1"
 
+# A service is only "meaningfully" stale if the commits it's missing touch code
+# that actually changes runtime behavior. A docs/script-only commit (e.g. adding
+# this very script, or a PROJECT_PLAN edit) is not real drift and must not page.
+RUNTIME_PREFIXES = (
+    "scraper/", "scheduler/", "utils/", "config/", "dashboard/", "sql/",
+    "requirements", "Dockerfile", "wsgi.py",
+)
+
 # name -> Render service id. Keep in sync with the self-healing service map.
 SERVICES = {
     "scraper-1": "crn-d6li6f5m5p6s73chtqh0",
@@ -79,6 +87,25 @@ def latest_deploy(sid, key):
     return (d.get("commit", {}) or {}).get("id"), d.get("status")
 
 
+def runtime_drift(deployed_sha, head_sha):
+    """True if the commits between deployed_sha and head touch runtime code.
+
+    Uses the GitHub compare API; on any error, fail safe to True (treat as real
+    drift) so we never silence a genuine stale deploy.
+    """
+    if not deployed_sha:
+        return True
+    try:
+        cmp = _get(
+            f"https://api.github.com/repos/{REPO}/compare/{deployed_sha}...{head_sha}",
+            {"Accept": "application/vnd.github+json", "User-Agent": "deploy-drift"},
+        )
+    except Exception:
+        return True
+    files = [f.get("filename", "") for f in cmp.get("files", [])]
+    return any(fn.startswith(RUNTIME_PREFIXES) for fn in files)
+
+
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--always", action="store_true",
@@ -93,7 +120,7 @@ def main():
     head = master_head()
     logger.info("[OK] origin/master HEAD = %s", head[:9])
 
-    drifted, not_live, ok = [], [], 0
+    stale, benign, not_live, ok = [], [], [], 0
     for name, sid in SERVICES.items():
         try:
             sha, status = latest_deploy(sid, key)
@@ -103,23 +130,28 @@ def main():
         short = (sha or "?")[:9]
         if status != "live":
             not_live.append((name, f"deploy status={status} ({short})"))
-        elif sha != head:
-            drifted.append((name, short))
-        else:
+        elif sha == head:
             ok += 1
+        elif runtime_drift(sha, head):
+            stale.append((name, short))   # missing real scraper-affecting code
+        else:
+            benign.append((name, short))  # only docs/scripts behind — not an alert
         logger.info("  %-20s %-9s %s", name, short, status)
 
-    n_issues = len(drifted) + len(not_live)
-    logger.info("[OK] %d on HEAD, %d drifted, %d not-live", ok, len(drifted), len(not_live))
+    # Only runtime-stale services or non-live deploys are real, page-worthy issues.
+    n_issues = len(stale) + len(not_live)
+    logger.info("[OK] %d on HEAD, %d runtime-stale, %d benign-behind, %d not-live",
+                ok, len(stale), len(benign), len(not_live))
 
     if n_issues or args.always:
         lines = ["<b>Deploy-Drift Check — Funeral Homes</b>"]
         lines.append(f"<b>Status: {'DRIFT' if n_issues else 'OK'}</b>")
         lines.append(f"master HEAD: <code>{head[:9]}</code>")
-        lines.append(f"On HEAD: {ok}/{len(SERVICES)}")
-        if drifted:
-            lines.append("\n<b>Drifted (stale code — redeploy):</b>")
-            lines += [f"  • {n} @ <code>{s}</code>" for n, s in drifted]
+        lines.append(f"On HEAD: {ok}/{len(SERVICES)}"
+                     + (f" (+{len(benign)} behind on docs/scripts only)" if benign else ""))
+        if stale:
+            lines.append("\n<b>STALE — missing scraper code, redeploy:</b>")
+            lines += [f"  • {n} @ <code>{s}</code>" for n, s in stale]
         if not_live:
             lines.append("\n<b>Not live:</b>")
             lines += [f"  • {n}: {s}" for n, s in not_live]
