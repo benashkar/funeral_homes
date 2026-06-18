@@ -122,7 +122,7 @@ def test_polite_get_returns_none_when_all_attempts_are_challenges():
 
 @patch("utils.rate_limiter.PROXY_URL", "http://u:p@gw:10000")
 @patch("utils.rate_limiter.time.sleep", lambda *_: None)
-def test_polite_get_in_proxy_mode_does_min_8_retries():
+def test_polite_get_in_proxy_mode_does_min_retries():
     challenge = (
         '<html><head><title>Just a moment...</title></head><body>'
         + ("c" * 5000) + '</body></html>'
@@ -130,10 +130,10 @@ def test_polite_get_in_proxy_mode_does_min_8_retries():
     session = MagicMock()
     session.get.return_value = _resp(200, challenge)
 
-    # Caller asks for 1 retry; proxy mode bumps to PROXY_MIN_RETRIES (8)
+    # Caller asks for 1 retry; proxy mode bumps to PROXY_MIN_RETRIES.
     resp = polite_get(session, "https://example.com/x", max_retries=1)
     assert resp is None
-    assert session.get.call_count == 8
+    assert session.get.call_count == rate_limiter.PROXY_MIN_RETRIES
 
 
 @patch("utils.rate_limiter.time.sleep", lambda *_: None)
