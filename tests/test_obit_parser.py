@@ -185,6 +185,91 @@ def test_parse_funeral_home_detail_no_breadcrumb():
     assert fh["name"] is None
 
 
+# --- Next.js /person/ page fixtures (2026 H2+) ---
+#
+# These pages carry a BreadcrumbList that walks Home > Last Name > Person and
+# never mentions the funeral home. The FH link survives only as a rendered
+# <a href> and inside the RSC flight payload. Regression guard for the bug that
+# left obituaries.funeral_home_id NULL on every row scraped after the migration.
+
+NEXTJS_BREADCRUMB = """
+    <script type="application/ld+json">
+    {
+        "@context": "https://schema.org",
+        "@type": "BreadcrumbList",
+        "itemListElement": [
+            {"@type": "ListItem", "position": 1,
+             "item": {"@type": "Thing", "@id": "https://www.legacy.com/", "name": "Home"}},
+            {"@type": "ListItem", "position": 2,
+             "item": {"@type": "Thing", "@id": "https://www.legacy.com/obituaries/name/watson",
+                      "name": "Watson Last Name Obits"}}
+        ]
+    }
+    </script>
+"""
+
+NEXTJS_ANCHOR_HTML = f"""
+<html><head>{NEXTJS_BREADCRUMB}</head>
+<body>
+  <div class="flex flex-col gap-4">
+    <a rel="noreferrer" href="https://www.legacy.com/funeral-homes/texas/early/heartland-funeral-home-cremation-services-early/fh-19387">
+      <div><p>Heartland Funeral Home &amp; Cremation Services - Early</p></div>
+    </a>
+  </div>
+</body></html>
+"""
+
+# Same page, but the FH anchor is client-rendered — only the escaped RSC
+# payload remains in the server HTML.
+NEXTJS_RSC_ONLY_HTML = f"""
+<html><head>{NEXTJS_BREADCRUMB}</head>
+<body>
+  <script>
+  self.__next_f.push([1,"e:[\\"$\\",\\"div\\",null,{{\\"funeralHome\\":{{\\"id\\":19387,\\"name\\":\\"Heartland Funeral Home \\u0026 Cremation Services - Early\\",\\"url\\":\\"https://www.legacy.com/funeral-homes/texas/early/heartland-funeral-home-cremation-services-early/fh-19387\\",\\"logoUrl\\":null}}}}]"])
+  </script>
+</body></html>
+"""
+
+
+def test_parse_funeral_home_detail_nextjs_anchor():
+    """Next.js /person/ page: FH id comes from the rendered <a href>."""
+    fh = parse_funeral_home_detail(BeautifulSoup(NEXTJS_ANCHOR_HTML, "lxml"))
+    assert fh["legacy_fh_id"] == "fh-19387"
+    assert fh["name"] == "Heartland Funeral Home & Cremation Services - Early"
+    assert fh["city"] == "Early"
+    assert fh["state"] == "Texas"
+    assert fh["legacy_url"].endswith("/fh-19387")
+
+
+def test_parse_funeral_home_detail_nextjs_rsc_payload():
+    """Next.js /person/ page with no rendered anchor: fall back to the RSC payload."""
+    fh = parse_funeral_home_detail(BeautifulSoup(NEXTJS_RSC_ONLY_HTML, "lxml"))
+    assert fh["legacy_fh_id"] == "fh-19387"
+    assert fh["name"] == "Heartland Funeral Home & Cremation Services - Early"
+    assert fh["city"] == "Early"
+    assert fh["state"] == "Texas"
+
+
+def test_parse_funeral_home_detail_name_never_null_when_id_found():
+    """funeral_homes.name is NOT NULL — an unnamed FH link still yields a name."""
+    html = """<html><body><a href="/funeral-homes/ohio/springfield/greenfield-memorial-chapel/fh-1234"></a></body></html>"""
+    fh = parse_funeral_home_detail(BeautifulSoup(html, "lxml"))
+    assert fh["legacy_fh_id"] == "fh-1234"
+    assert fh["name"] == "Greenfield Memorial Chapel"
+    assert fh["legacy_url"].startswith("https://www.legacy.com/")
+
+
+def test_parse_funeral_home_detail_ignores_non_fh_links():
+    """A page with only unrelated links must not invent an FH."""
+    html = """<html><body>
+      <a href="/us/obituaries/local/texas/brown-county">Brown County</a>
+      <a href="https://www.heartlandfuneralhome.net/obituaries/Sharon">Heartland</a>
+    </body></html>"""
+    fh = parse_funeral_home_detail(BeautifulSoup(html, "lxml"))
+    assert fh["legacy_fh_id"] is None
+    assert fh["name"] is None
+
+
 # --- parse_obit_text tests ---
 
 def test_parse_obit_text_happy():

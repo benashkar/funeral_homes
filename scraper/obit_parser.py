@@ -245,21 +245,64 @@ def parse_dates(soup):
     return result
 
 
-_FH_URL_RE = re.compile(r'/funeral-homes/([^/]+)/([^/]+)/[^/]+/(fh-\d+)')
+_LEGACY_DOMAIN = "https://www.legacy.com"
+
+# /funeral-homes/{state}/{city}/{slug}/fh-{ID}
+_FH_URL_RE = re.compile(r'/funeral-homes/([^/?#"\s]+)/([^/?#"\s]+)/([^/?#"\s]+)/(fh-\d+)')
+
+# RSC flight payload: "funeralHome":{"id":19387,"name":"Heartland ...","url":"..."}
+_FH_PAYLOAD_NAME_RE = re.compile(r'"funeralHome"\s*:\s*\{[^{}]*?"name"\s*:\s*"([^"]+)"')
+
+
+def _unescape_flight(text):
+    """Undo the JSON string-escaping Next.js applies inside its RSC <script> payload."""
+    return text.replace('\\"', '"').replace("\\/", "/").replace("\\u0026", "&")
+
+
+def _fh_from_url(url, name=None):
+    """Build an FH detail dict from a /funeral-homes/.../fh-{ID} URL.
+
+    `name` falls back to the URL slug because `funeral_homes.name` is NOT NULL —
+    an FH we can identify but not name must still be insertable.
+    """
+    match = _FH_URL_RE.search(url or "")
+    if not match:
+        return None
+    state, city, slug, fh_id = match.groups()
+    name = (name or "").strip() or slug.replace("-", " ").title()
+    full_url = url if url.startswith("http") else _LEGACY_DOMAIN + match.group(0)
+    return {
+        "legacy_fh_id": fh_id,
+        "name": name,
+        "state": state.replace("-", " ").title(),
+        "city": city.replace("-", " ").title(),
+        "legacy_url": full_url,
+    }
 
 
 def parse_funeral_home_detail(soup):
-    """Extract structured funeral home data from JSON-LD BreadcrumbList.
+    """Extract structured funeral home data from an obituary detail page.
 
-    Parses the BreadcrumbList URL pattern:
+    The funeral-home URL carries the ID we key `funeral_homes` on:
       /funeral-homes/{state}/{city}/{slug}/fh-{ID}
+
+    Legacy.com exposes that URL in three different places depending on which
+    generation of the page we get back, so we try each in turn:
+
+      1. JSON-LD BreadcrumbList  — pre-2026-H2 pages.
+      2. A rendered <a href> link — Next.js /person/ pages, whose BreadcrumbList
+         only walks Home > Last Name > Person and no longer mentions the
+         funeral home at all.
+      3. The embedded RSC flight payload — same Next.js pages, used when the
+         link is client-rendered and so absent from the server HTML.
 
     Returns:
         dict with keys: legacy_fh_id, name, city, state, legacy_url.
         All values are None if no FH data found.
     """
-    result = {"legacy_fh_id": None, "name": None, "city": None, "state": None, "legacy_url": None}
+    empty = {"legacy_fh_id": None, "name": None, "city": None, "state": None, "legacy_url": None}
 
+    # 1. JSON-LD BreadcrumbList (older pages).
     for script in soup.find_all("script", type="application/ld+json"):
         try:
             data = json.loads(script.string or "")
@@ -271,16 +314,32 @@ def parse_funeral_home_detail(soup):
             item_data = item.get("item", {})
             item_id = item_data.get("@id") or ""
             if "/funeral-homes/" in item_id and "/fh-" in item_id:
-                result["name"] = (item_data.get("name") or "").strip() or None
-                result["legacy_url"] = item_id
-                match = _FH_URL_RE.search(item_id)
-                if match:
-                    result["state"] = match.group(1).replace("-", " ").title()
-                    result["city"] = match.group(2).replace("-", " ").title()
-                    result["legacy_fh_id"] = match.group(3)
-                break
+                result = _fh_from_url(item_id, item_data.get("name"))
+                if result:
+                    return result
+                # URL present but malformed — keep the name/url we did get.
+                return {**empty, "name": (item_data.get("name") or "").strip() or None,
+                        "legacy_url": item_id}
 
-    return result
+    # 2. Rendered <a href> to the funeral home (Next.js /person/ pages).
+    for anchor in soup.find_all("a", href=True):
+        result = _fh_from_url(anchor["href"], anchor.get_text(strip=True))
+        if result:
+            return result
+
+    # 3. RSC flight payload: "funeralHome":{"id":19387,...,"url":"...fh-19387"}.
+    # The payload is JSON-escaped inside a <script>, so unescape before matching.
+    for script in soup.find_all("script"):
+        text = script.string or ""
+        if "/funeral-homes/" not in text:
+            continue
+        text = _unescape_flight(text)
+        match = _FH_URL_RE.search(text)
+        if match:
+            name_match = _FH_PAYLOAD_NAME_RE.search(text)
+            return _fh_from_url(match.group(0), name_match.group(1) if name_match else None)
+
+    return dict(empty)
 
 
 def parse_funeral_home(soup):
