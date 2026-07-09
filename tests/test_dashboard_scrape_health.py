@@ -89,6 +89,38 @@ def test_health_status_json_includes_quiet_markets():
             assert k in data, f"existing trigger field {k} disappeared"
 
 
+def test_health_status_json_exposes_funeral_home_linkage():
+    """funeral_home (text) and funeral_home_id (FK) fail independently.
+
+    Legacy.com's Next.js migration kept the name flowing while the FK went NULL
+    on every new row, silently breaking every join through funeral_homes. The
+    old `backfill.missing_funeral_home` counter watches only the text column, so
+    it stayed green throughout. Track the FK explicitly or the next migration
+    regresses it invisibly.
+    """
+    def rows(sql):
+        s = " ".join(sql.upper().split())
+        if "COUNT(DISTINCT SITE_ID) AS MARKETS" in s:
+            return [{"markets": 0, "found": 0, "new_obits": 0, "blocked": 0, "errors": 0}]
+        if "SUM(OBITS_NEW) AS N" in s:
+            return [{"n": 0}]
+        if "AS TOTAL" in s and "AS UNLINKED" in s:
+            return [{"total": 200, "unlinked": 50}]
+        if "COUNT(*) AS C" in s:
+            return [{"c": 7}]
+        return []
+
+    for app, _cur in _build_app_with_mock_conn(rows):
+        data = app.test_client().get("/health-status.json").get_json()
+        link = data["funeral_home_linkage"]
+        assert link["missing_funeral_home_id"] == 7
+        assert link["recent_14d_total"] == 200
+        assert link["recent_14d_unlinked"] == 50
+        assert link["recent_14d_unlinked_pct"] == 25.0
+        # Also surfaced in the backfill block the self-healing trigger reads.
+        assert data["backfill"]["missing_funeral_home_id"] == 7
+
+
 def test_health_status_json_status_issues_when_quiet_markets_present():
     """The new quiet_markets canary must elevate status to ISSUES so the
     daily self-healing trigger picks it up (otherwise it'd see status=OK
