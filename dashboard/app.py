@@ -831,6 +831,31 @@ def create_app():
             cur.execute("SELECT COUNT(*) AS c FROM obituaries WHERE is_deleted=0")
             total_obits = cur.fetchone()["c"]
 
+            # The funeral_home TEXT column and the funeral_home_id FK fail
+            # independently: Legacy.com's Next.js migration kept the name (via the
+            # listing-card badge) while the FK went NULL on every new row, which
+            # broke every join through funeral_homes -- invisible to the
+            # missing_funeral_home counter above. Track the FK separately.
+            #
+            # Rows with no funeral_home text have no FH upstream at all, so a NULL
+            # FK there is correct. Only a row that names a funeral home but has no
+            # FK is a linkage failure.
+            cur.execute(
+                "SELECT COUNT(*) AS c FROM obituaries "
+                "WHERE is_deleted=0 AND funeral_home IS NOT NULL AND funeral_home_id IS NULL"
+            )
+            missing_fh_id = cur.fetchone()["c"]
+
+            cur.execute(
+                "SELECT COUNT(*) AS total,"
+                "       SUM(funeral_home IS NOT NULL AND funeral_home_id IS NULL) AS unlinked "
+                "FROM obituaries "
+                "WHERE is_deleted=0 AND scraped_at >= CURDATE() - INTERVAL 14 DAY"
+            )
+            recent = cur.fetchone() or {}
+            recent_total = recent.get("total") or 0
+            recent_unlinked = int(recent.get("unlinked") or 0)
+
             cur.close()
             conn.close()
 
@@ -857,9 +882,18 @@ def create_app():
                 "error_sample": error_sample,
                 "stale_markets": stale,
                 "quiet_markets": quiet_markets,
+                "funeral_home_linkage": {
+                    "missing_funeral_home_id": missing_fh_id,
+                    "recent_14d_total": recent_total,
+                    "recent_14d_unlinked": recent_unlinked,
+                    "recent_14d_unlinked_pct": (
+                        round(100.0 * recent_unlinked / recent_total, 1) if recent_total else 0.0
+                    ),
+                },
                 "backfill": {
                     "missing_death_date": missing_dd,
                     "missing_funeral_home": missing_fh,
+                    "missing_funeral_home_id": missing_fh_id,
                     "total_obits": total_obits,
                 },
             })
