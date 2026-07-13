@@ -856,6 +856,29 @@ def create_app():
             recent_total = recent.get("total") or 0
             recent_unlinked = int(recent.get("unlinked") or 0)
 
+            # Per-day linkage for the last 4 scrape-days. Lets us watch the
+            # Next.js funeral_home_id fix take effect one day at a time: days
+            # scraped on the fixed code should trend to a near-zero unlinked pct.
+            cur.execute(
+                "SELECT DATE(scraped_at) AS d, COUNT(*) AS total,"
+                "       SUM(funeral_home IS NOT NULL AND funeral_home_id IS NULL) AS unlinked "
+                "FROM obituaries "
+                "WHERE is_deleted=0 AND scraped_at >= CURDATE() - INTERVAL 3 DAY "
+                "GROUP BY DATE(scraped_at) ORDER BY d DESC"
+            )
+            by_day = [
+                {
+                    "date": str(r["d"]),
+                    "total": int(r["total"] or 0),
+                    "unlinked": int(r["unlinked"] or 0),
+                    "unlinked_pct": (
+                        round(100.0 * int(r["unlinked"] or 0) / int(r["total"]), 1)
+                        if r["total"] else 0.0
+                    ),
+                }
+                for r in cur.fetchall()
+            ]
+
             cur.close()
             conn.close()
 
@@ -889,6 +912,7 @@ def create_app():
                     "recent_14d_unlinked_pct": (
                         round(100.0 * recent_unlinked / recent_total, 1) if recent_total else 0.0
                     ),
+                    "by_day": by_day,
                 },
                 "backfill": {
                     "missing_death_date": missing_dd,
