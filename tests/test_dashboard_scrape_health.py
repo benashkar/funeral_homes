@@ -104,6 +104,11 @@ def test_health_status_json_exposes_funeral_home_linkage():
             return [{"markets": 0, "found": 0, "new_obits": 0, "blocked": 0, "errors": 0}]
         if "SUM(OBITS_NEW) AS N" in s:
             return [{"n": 0}]
+        if "DATE(SCRAPED_AT) AS D" in s:  # per-day linkage breakdown
+            return [
+                {"d": "2026-07-13", "total": 100, "unlinked": 2},
+                {"d": "2026-07-12", "total": 100, "unlinked": 4},
+            ]
         if "AS TOTAL" in s and "AS UNLINKED" in s:
             return [{"total": 200, "unlinked": 50}]
         if "COUNT(*) AS C" in s:
@@ -119,6 +124,10 @@ def test_health_status_json_exposes_funeral_home_linkage():
         assert link["recent_14d_unlinked_pct"] == 25.0
         # Also surfaced in the backfill block the self-healing trigger reads.
         assert data["backfill"]["missing_funeral_home_id"] == 7
+        # Per-day breakdown lets us watch the fix land one scrape-day at a time.
+        assert link["by_day"][0] == {
+            "date": "2026-07-13", "total": 100, "unlinked": 2, "unlinked_pct": 2.0,
+        }
 
 
 def test_health_status_json_status_issues_when_quiet_markets_present():
