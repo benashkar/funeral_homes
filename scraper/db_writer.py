@@ -3,6 +3,8 @@
 Optimized for scale: connection pooling, batch inserts, per-market URL lookups.
 """
 
+import time
+from contextlib import contextmanager
 from datetime import date
 
 import mysql.connector
@@ -154,6 +156,23 @@ KNOWN_URLS_SQL = """
 # Module-level connection pool (created on first use)
 _pool = None
 
+# db99 is SHARED: max_connections=1289, wait_timeout=28800 (eight hours).
+#
+# MySQLConnectionPool opens EVERY connection eagerly at construction -- measured
+# 2026-09-02: building a pool_size=8 pool took funeral_homes from 97 to 105 live
+# connections before a single query ran. The old size of 8 was therefore 8
+# connections held for the whole life of every process that touched this module,
+# across ~15 scraper services, whether or not they were needed.
+#
+# Nothing in this repo is concurrent -- there is no ThreadPoolExecutor, no
+# threading.Thread, and run_daily.py checks out exactly one connection at a
+# time -- so the measured high-water mark of simultaneous checkouts is 1.
+# Size 2 leaves one spare for incidental overlap and drops the resting cost
+# from 8 to 2, in line with the Englewood pool shape (limit 5, maxIdle 2).
+POOL_SIZE = 2
+
+ER_CON_COUNT_ERROR = 1040  # "Too many connections"
+
 
 def _get_pool():
     """Get or create the connection pool (lazy init, thread-safe)."""
@@ -164,7 +183,7 @@ def _get_pool():
     creds = get_db_credentials()
     _pool = pooling.MySQLConnectionPool(
         pool_name="obit_pool",
-        pool_size=8,
+        pool_size=POOL_SIZE,
         pool_reset_session=True,
         host=creds["DB_HOST"],
         port=int(creds["DB_PORT"]),
@@ -174,13 +193,62 @@ def _get_pool():
         connect_timeout=10,
         autocommit=False,
     )
-    logger.info("[OK] Created connection pool (size=8)")
+    logger.info("[OK] Created connection pool (size=%d)", POOL_SIZE)
     return _pool
 
 
-def get_connection():
-    """Get a connection from the pool."""
-    return _get_pool().get_connection()
+def get_connection(attempts=4, base_delay=2.0):
+    """Get a connection from the pool.
+
+    Retries ONLY errno 1040 (ER_CON_COUNT_ERROR) with linear backoff, so a
+    connection-ceiling spike caused by another project on db99 costs this
+    scraper a few seconds instead of a night's data. Every other error is
+    raised at once -- retrying everything turns a real fault into a slow one.
+    """
+    last_err = None
+    for attempt in range(attempts):
+        try:
+            return _get_pool().get_connection()
+        except mysql.connector.Error as e:
+            if getattr(e, "errno", None) != ER_CON_COUNT_ERROR:
+                raise
+            last_err = e
+            if attempt < attempts - 1:
+                delay = base_delay * (attempt + 1)  # linear: 2s, 4s, 6s
+                logger.warning(
+                    "[--] db99 at max connections (1040), retry %d/%d in %.0fs",
+                    attempt + 1, attempts - 1, delay,
+                )
+                time.sleep(delay)
+    logger.error("[ERR] db99 refused connection (1040) after %d attempts", attempts)
+    raise last_err
+
+
+def release_connection(conn):
+    """Return a pooled connection, swallowing errors. Safe on None.
+
+    Calling .close() on a pooled connection returns it to the pool rather than
+    closing the socket. A connection NOT returned is lost for the life of the
+    process: after POOL_SIZE such losses every later get_connection() raises
+    PoolError and the rest of the run writes nothing. Always release in a
+    `finally`.
+    """
+    if conn is None:
+        return
+    try:
+        conn.close()
+    except Exception:
+        pass
+
+
+@contextmanager
+def pooled_connection():
+    """Context manager that always returns its connection to the pool."""
+    conn = get_connection()
+    try:
+        yield conn
+    finally:
+        release_connection(conn)
 
 
 def _get_connection():

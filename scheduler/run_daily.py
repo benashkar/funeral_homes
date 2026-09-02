@@ -21,7 +21,7 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 load_dotenv()
 
 from scraper.legacy_scraper import LegacyScraper
-from scraper.db_writer import get_connection, batch_insert_obits, log_run, get_known_urls_for_site, flag_bad_and_dupes, upsert_funeral_home, enrich_funeral_home, ensure_schema, find_quiet_markets
+from scraper.db_writer import get_connection, release_connection, pooled_connection, batch_insert_obits, log_run, get_known_urls_for_site, flag_bad_and_dupes, upsert_funeral_home, enrich_funeral_home, ensure_schema, find_quiet_markets
 from utils.logger import get_logger
 from utils.rate_limiter import create_session, MAX_RETRIES
 from utils.s3_uploader import upload_photo
@@ -188,10 +188,18 @@ def scrape_market(market, session):
     """
     site_id = market["site_id"]
 
+    # A pooled connection that is not returned is lost for the life of the
+    # process (POOL_SIZE losses and every later market fails with PoolError),
+    # and its db99 session sits Sleep for the eight-hour wait_timeout. The
+    # window below spans network I/O -- enrich_funeral_home and upload_photo
+    # both make HTTP calls while holding the connection -- so the `finally`
+    # is what actually keeps the pool alive across a few hundred markets.
+    conn = None
     try:
         conn = get_connection()
         known_urls = get_known_urls_for_site(conn, site_id)
-        conn.close()
+        release_connection(conn)
+        conn = None
 
         # Priority markets (Cherry Road) get full retries. Non-priority get
         # 1 attempt only to avoid burning 8+ min per failure and timing out
@@ -325,7 +333,8 @@ def scrape_market(market, session):
         # Log diagnostic info when listing page returned 0 links
         diag = scraper._last_listing_diag if found == 0 else None
         log_run(conn, site_id, found, new_count, errors=diag)
-        conn.close()
+        release_connection(conn)
+        conn = None
 
         # Surface a blocked listing as an error so the in-memory counter
         # (used by the per-scraper Telegram summary) doesn't report "0 errors"
@@ -334,13 +343,23 @@ def scrape_market(market, session):
 
     except Exception as e:
         logger.error("[%s] Failed: %s", site_id, e)
+        err_conn = None
         try:
-            conn = get_connection()
-            log_run(conn, site_id, 0, 0, errors=str(e))
-            conn.close()
+            err_conn = get_connection()
+            log_run(err_conn, site_id, 0, 0, errors=str(e))
         except Exception:
             pass
+        finally:
+            # err_conn is None when get_connection() itself raised -- release must tolerate that,
+            # or the leak fix becomes a new crash on the one path that is already failing.
+            if err_conn is not None:
+                release_connection(err_conn)
         return (site_id, 0, 0, str(e), 0)
+
+    finally:
+        # Returns the connection on every path the body did not already
+        # release it on -- including the exception path above.
+        release_connection(conn)
 
 
 def _run_auto_backfill():
@@ -351,7 +370,16 @@ def _run_auto_backfill():
     """
     from scraper.obit_parser import parse_death_date_from_text, parse_funeral_home_from_text
 
-    conn = get_connection()
+    # Pooled connection returned on every path, including the mid-loop
+    # exception that used to strand it (see db_writer.release_connection).
+    with pooled_connection() as conn:
+        return _auto_backfill_with_conn(
+            conn, parse_death_date_from_text, parse_funeral_home_from_text
+        )
+
+
+def _auto_backfill_with_conn(conn, parse_death_date_from_text, parse_funeral_home_from_text):
+    """Body of the auto-backfill, on a caller-owned connection."""
     cur = conn.cursor(dictionary=True)
 
     # Find records missing death_date or funeral_home
@@ -366,7 +394,6 @@ def _run_auto_backfill():
     cur.close()
 
     if not rows:
-        conn.close()
         return None
 
     death_fixed = 0
@@ -394,7 +421,6 @@ def _run_auto_backfill():
 
     conn.commit()
     update_cur.close()
-    conn.close()
 
     if death_fixed or fh_fixed:
         summary = f"death_date={death_fixed}, funeral_home={fh_fixed}"
@@ -407,9 +433,8 @@ def _run_auto_backfill():
 def run():
     """Main entry point: scrape all markets, state by state."""
     # Ensure funeral_homes table + FK exist before scraping
-    conn = get_connection()
-    ensure_schema(conn)
-    conn.close()
+    with pooled_connection() as conn:
+        ensure_schema(conn)
 
     markets = load_markets()
     states = group_by_state(markets)
@@ -461,18 +486,19 @@ def run():
             time.sleep(STATE_COOLDOWN)
 
     # Post-scrape cleanup
-    conn = get_connection()
-    bad, duped = flag_bad_and_dupes(conn)
-    # Per-market silent-zero check — markets that scraped 0 today but had
-    # >=3 active days in the prior week. Catches single-market regressions
-    # the batch-level silent-zero canary can't see.
-    site_ids = [m["site_id"] for m in markets]
-    try:
-        quiet_markets = find_quiet_markets(conn, site_ids)
-    except Exception as e:
-        logger.warning("[--] quiet-market query failed: %s", e)
-        quiet_markets = []
-    conn.close()
+    # master's quiet-market check runs INSIDE the pooled connection, so the connection is
+    # returned on every path including the query failing -- which is the whole point of the fix.
+    with pooled_connection() as conn:
+        bad, duped = flag_bad_and_dupes(conn)
+        # Per-market silent-zero check — markets that scraped 0 today but had
+        # >=3 active days in the prior week. Catches single-market regressions
+        # the batch-level silent-zero canary can't see.
+        site_ids = [m["site_id"] for m in markets]
+        try:
+            quiet_markets = find_quiet_markets(conn, site_ids)
+        except Exception as e:
+            logger.warning("[--] quiet-market query failed: %s", e)
+            quiet_markets = []
 
     # Auto-backfill: parse missing death dates and funeral homes from text
     # Fast text-only parsing (~30s), no HTTP requests
