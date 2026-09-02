@@ -155,10 +155,20 @@ def create_app():
                 pass
 
     # dashboard.db.get_db() stores its connection on `g` and relies on
-    # close_db running at teardown. Register it here so the handler exists
-    # whether or not the routes blueprint is mounted on this app.
-    from dashboard.db import init_app as _init_db
-    _init_db(app)
+    # close_db running at teardown; register it so the handler exists if the
+    # routes blueprint is ever mounted here.
+    #
+    # GUARDED ON PURPOSE: dashboard/db.py imports pymysql, which is in NEITHER
+    # requirements.txt NOR requirements-web.txt. A bare import here would raise
+    # ModuleNotFoundError at boot and take the live dashboard down. The module
+    # is currently unreachable from this app anyway (no register_blueprint call
+    # exists), so a missing driver must never be fatal. If the blueprint is ever
+    # mounted, add pymysql to requirements-web.txt at the same time.
+    try:
+        from dashboard.db import init_app as _init_db
+        _init_db(app)
+    except ImportError as e:
+        logger.info("[--] dashboard.db teardown not registered (%s)", e)
 
     # Auto-migrate on startup (idempotent). No app context here, so the
     # teardown net does not apply — close it explicitly in a finally.
