@@ -1,3 +1,115 @@
+# CROSS-PROJECT INCIDENT - 2026-09-02: db99 connection exhaustion
+
+_Last updated: 2026-09-02_
+
+## What happened
+
+db99 is ONE MySQL instance shared by every project. On 2026-09-02 it reached
+**1,286 of 1,289 connections** and began refusing new ones with
+`ER_CON_COUNT_ERROR` / errno 1040. Scrapes broke in five unrelated projects.
+1,071 connections have been refused since April. `wait_timeout` is **28800
+(eight hours)**, so a connection that is never closed holds its slot for most
+of a day.
+
+**funeral_homes was the largest single leaker: 96 connections, 95 of them
+`Sleep`** at the time of measurement.
+
+## What was actually wrong in THIS project
+
+Measured before any change (`information_schema.PROCESSLIST`):
+
+| database | total | sleeping | oldest |
+|---|---|---|---|
+| **funeral_homes** | **96** | **95** | 5,021s |
+| cr_sources | 22 | 21 | 28,070s |
+| college_athletes | 15 | 13 | 1,802s |
+| crime | 14 | 9 | 24,910s |
+| church_scrapes | 2 | 2 | 864s |
+
+### 1. `dashboard/app.py` - raw unpooled connection per call, zero `finally`
+
+`_get_conn()` opened a raw `mysql.connector` connection on every call. Ten call
+sites, ten `conn.close()` calls, and **zero `finally:` blocks in the module**.
+
+Every route was shaped:
+
+```python
+try:
+    conn = _get_conn()
+    ...queries...
+    conn.close()          # only reached when nothing raises
+except Exception as e:
+    return error, 503     # connection stranded for 8 hours
+```
+
+Because each route swallows its own exception, the leak was completely silent.
+This created a positive feedback loop: connection pressure caused query errors,
+each error skipped a `close()`, and the leak increased the pressure. That is
+why this project *accumulated* during the incident rather than merely suffering
+from it.
+
+Worst sites: `/health` (polled by Render constantly, and it returns
+`status: ok` even on DB failure so nothing ever restarts the leaking pod),
+`/health-status` (ten queries before its close), `/` and `/health-status.json`.
+
+### 2. `dashboard/db.py` - `close_db()` defined but NEVER registered
+
+The whole-repo occurrence count of `close_db` was **1**: its own `def`. No
+`teardown_appcontext`, no `teardown_request`. `get_db()` therefore leaked one
+connection per request.
+
+**Contributed zero connections in practice** - `dashboard/db.py` and
+`dashboard/routes/` were never committed to git (untracked), so they have never
+been deployed, and no `register_blueprint` call exists anywhere. Fixed anyway as
+a latent trap.
+
+### 3. `scraper/db_writer.py` - pool_size=8 on a single-threaded pipeline
+
+`MySQLConnectionPool` opens **every** connection eagerly at construction.
+Measured 2026-09-02: building a `pool_size=8` pool took funeral_homes from 97
+to 105 live connections **before a single query ran**. Checking a connection
+out did not change the count, confirming pooled `.close()` returns rather than
+closes.
+
+The repo has no `ThreadPoolExecutor`, no `threading.Thread`, and `run_daily.py`
+holds exactly one connection at a time - measured high-water mark of concurrent
+checkouts is **1**. So 7 of the 8 were pure waste, across ~15 scraper services.
+
+Worse, `scrape_market()` held a pooled connection across `enrich_funeral_home()`
+and `upload_photo()`, both of which make HTTP calls. A network exception there
+never returned the connection; after 8 such failures the pool was exhausted and
+every remaining market failed with `PoolError`, writing nothing.
+
+## What was fixed
+
+- **`dashboard/app.py`**: `_get_conn()` now registers each connection on Flask's
+  `g`, and `create_app()` registers `@app.teardown_appcontext` to close
+  everything registered. This is a safety net rather than 11 separate patches -
+  it also covers routes added in future, which patching each call site does not.
+  Outside an app context (scripts importing the module) behaviour is unchanged.
+  Explicit `conn.close()` calls remain and are now harmless no-ops.
+- **`dashboard/app.py`**: explicit `try/finally` on `/health` and
+  `/health-status` as well, since those are the constantly-polled hot paths.
+- **`dashboard/app.py` + `scraper/db_writer.py`**: connect retries **only**
+  errno 1040 with linear backoff (2s, 4s, 6s). Every other error raises
+  immediately - retrying everything turns a real fault into a slow one.
+- **`dashboard/db.py`**: added `init_app(app)` which registers `close_db` via
+  `teardown_appcontext`; called from `create_app()`.
+- **`scraper/db_writer.py`**: `POOL_SIZE` 8 -> 2, plus `release_connection()`
+  and a `pooled_connection()` context manager.
+- **`scheduler/run_daily.py`**: every pooled checkout now returns in a
+  `finally`, including the HTTP-spanning window in `scrape_market()`.
+- **`tests/test_db99_connection_teardown.py`**: 4 regression tests. Verified to
+  FAIL against the pre-fix code and PASS after (full suite 118 passed).
+
+## Still open
+
+- The real fix is a lower `wait_timeout`, which needs an RDS parameter-group
+  change - out of scope for this repo.
+- `cherry-road-dashboard`'s `cr-db99-conn-reaper` cron is a net, not a fix.
+
+---
+
 # Legacy Obituary Scraper — Project Plan
 
 _Last updated: 2026-05-14 12:40 CT_

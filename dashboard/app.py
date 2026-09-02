@@ -2,9 +2,10 @@
 
 import json
 import os
+import time
 from datetime import datetime, timezone, timedelta
 
-from flask import Flask, jsonify, render_template, request
+from flask import Flask, g, has_app_context, jsonify, render_template, request
 import mysql.connector
 
 from utils.aws_secrets import get_db_credentials
@@ -34,7 +35,16 @@ STATE_MAP = {
 }
 
 
-def _get_conn():
+# db99 is a SHARED MySQL instance (max_connections=1289, wait_timeout=28800).
+# An unclosed connection holds its slot for EIGHT HOURS, so a leak here starves
+# every other project on the box. See global-config CLAUDE.md (2026-09-02).
+ER_CON_COUNT_ERROR = 1040  # "Too many connections"
+
+# Flask `g` key holding every connection opened during the current app context.
+_G_CONNS = "_db99_conns"
+
+
+def _connect_raw():
     creds = get_db_credentials()
     return mysql.connector.connect(
         host=creds["DB_HOST"],
@@ -44,6 +54,52 @@ def _get_conn():
         database=creds["DB_NAME"],
         connect_timeout=10,
     )
+
+
+def _connect_with_retry(attempts=4, base_delay=2.0):
+    """Connect to db99, retrying ONLY errno 1040 with linear backoff.
+
+    Another project spiking to the connection ceiling should cost us a few
+    seconds, not a night's data. Every other error is raised immediately —
+    retrying everything turns a real fault into a slow one.
+    """
+    last_err = None
+    for attempt in range(attempts):
+        try:
+            return _connect_raw()
+        except mysql.connector.Error as e:
+            if getattr(e, "errno", None) != ER_CON_COUNT_ERROR:
+                raise
+            last_err = e
+            if attempt < attempts - 1:
+                delay = base_delay * (attempt + 1)  # linear: 2s, 4s, 6s
+                logger.warning(
+                    "[--] db99 at max connections (1040), retry %d/%d in %.0fs",
+                    attempt + 1, attempts - 1, delay,
+                )
+                time.sleep(delay)
+    logger.error("[ERR] db99 refused connection (1040) after %d attempts", attempts)
+    raise last_err
+
+
+def _get_conn():
+    """Open a db99 connection, registered for teardown when in a request.
+
+    Inside a Flask app context the connection is recorded on `g` so
+    `teardown_appcontext` closes it no matter how the view exits — return,
+    exception, or an `except` block that swallows the error. That is the
+    safety net: it also covers routes added in the future, which is why it
+    beats patching each call site. Outside an app context (scripts importing
+    this module) the behaviour is unchanged.
+    """
+    conn = _connect_with_retry()
+    if has_app_context():
+        conns = g.get(_G_CONNS)
+        if conns is None:
+            conns = []
+            setattr(g, _G_CONNS, conns)
+        conns.append(conn)
+    return conn
 
 
 def _state_from_site_id(site_id):
@@ -83,12 +139,36 @@ def _pagination_pages(current_page, total_pages, window=2):
 def create_app():
     app = Flask(__name__)
 
-    # Auto-migrate on startup (idempotent)
+    @app.teardown_appcontext
+    def _close_db99_conns(exc=None):
+        """Close every db99 connection opened during this app context.
+
+        Runs on EVERY exit path, so a view that raises (or swallows an error
+        in its own `except`) can no longer strand a connection for the eight
+        hours db99's wait_timeout allows. Explicit `conn.close()` calls in the
+        views remain correct and simply make this a no-op.
+        """
+        for conn in g.pop(_G_CONNS, None) or []:
+            try:
+                conn.close()
+            except Exception:  # already closed by the view, or dead socket
+                pass
+
+    # dashboard.db.get_db() stores its connection on `g` and relies on
+    # close_db running at teardown. Register it here so the handler exists
+    # whether or not the routes blueprint is mounted on this app.
+    from dashboard.db import init_app as _init_db
+    _init_db(app)
+
+    # Auto-migrate on startup (idempotent). No app context here, so the
+    # teardown net does not apply — close it explicitly in a finally.
     try:
         from scraper.db_writer import ensure_schema as _ensure
         conn = _get_conn()
-        _ensure(conn)
-        conn.close()
+        try:
+            _ensure(conn)
+        finally:
+            conn.close()
     except Exception as e:
         logger.warning("Auto-migration skipped: %s", e)
 
@@ -105,16 +185,24 @@ def create_app():
 
     @app.route("/health")
     def health():
+        # Render polls this constantly. Belt-and-braces on top of the
+        # teardown net: a leak on this path accumulates around the clock.
+        conn = None
         try:
             conn = _get_conn()
             cur = conn.cursor()
             cur.execute("SELECT 1")
             cur.fetchone()
             cur.close()
-            conn.close()
             return {"status": "ok", "db": "connected"}
         except Exception as e:
             return {"status": "ok", "db": f"error: {e}"}
+        finally:
+            if conn is not None:
+                try:
+                    conn.close()
+                except Exception:
+                    pass
 
     @app.route("/")
     def index():
@@ -466,6 +554,10 @@ def create_app():
 
     @app.route("/health-status")
     def health_status():
+        # Hot path: polled by monitors and the Layer-3 agent, and it runs ten
+        # queries before its close(). Any one of them raising used to strand
+        # the connection for eight hours. Explicit finally on top of teardown.
+        conn = None
         try:
             conn = _get_conn()
             cur = conn.cursor(dictionary=True)
@@ -590,6 +682,12 @@ def create_app():
         except Exception as e:
             logger.error("Health route error: %s", e)
             return f"<h1>Database Error</h1><p>{e}</p>", 503
+        finally:
+            if conn is not None:
+                try:
+                    conn.close()
+                except Exception:
+                    pass
 
     @app.route("/health-status.json")
     def health_status_json():
