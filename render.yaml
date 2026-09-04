@@ -1,31 +1,215 @@
+# ============================================================================================
+# SOURCE OF TRUTH = the Render API, NOT this file. Generated from the API 2026-09-04 and kept as
+# accurate DOCUMENTATION of what is actually running.
+#
+# WARNING: KEEP BLUEPRINT AUTO-SYNC **OFF** in the Render dashboard. A sync would (a) revert any
+#     API-side schedule or command change and (b) DELETE every service not defined here. Until
+#     2026-09-04 this file declared 2 services while 21 were live -- a sync would have destroyed
+#     nineteen of them, including every scraper.
+#
+# NAMING TRAP: four services in this repo carry a `cr-` prefix -- cr-obituaries-dashboard and
+#     cr-rescue-scraper-1/2/3. That prefix reads as "Cherry Road" in a Render account that also
+#     holds 34 genuine cr-* services from benashkar/cherry-road-dashboard. On 2026-09-04 a
+#     fleet-wide cr-* deploy sweep picked up `cr-dashboard-keepwarm` from THIS repo by accident;
+#     it has since been renamed to funeral-homes-dashboard-keepwarm. The other three were missed
+#     by that sweep only because they fell on a later API page. Do not add another `cr-` name
+#     here; rename the remaining four when their URLs can afford it (cr-obituaries-dashboard's
+#     hostname is baked into the keepwarm cron that pings it).
+# ============================================================================================
 services:
-  - type: cron
-    name: funeral-homes-scraper
-    runtime: docker
-    region: virginia
-    schedule: "0 12 * * *"  # 12:00 UTC = 6:00 AM CT (7 AM EDT)
-    dockerfilePath: ./Dockerfile
-    envVars:
-      - key: AWS_ACCESS_KEY_ID
-        sync: false
-      - key: AWS_SECRET_ACCESS_KEY
-        sync: false
-      - key: AWS_DEFAULT_REGION
-        value: us-east-1
-      - key: DB_NAME
-        value: funeral_homes
 
+  # srv-d6lj29sr85hc73a8f1m0  autoDeploy=yes
   - type: web
     name: cr-obituaries-dashboard
     runtime: docker
     region: virginia
+    plan: starter
     dockerfilePath: ./Dockerfile.web
-    envVars:
-      - key: AWS_ACCESS_KEY_ID
-        sync: false
-      - key: AWS_SECRET_ACCESS_KEY
-        sync: false
-      - key: AWS_DEFAULT_REGION
-        value: us-east-1
-      - key: DB_NAME
-        value: funeral_homes
+
+  # crn-d7dbjenavr4c73e0212g  autoDeploy=no
+  - type: cron
+    name: cr-rescue-scraper-1
+    runtime: docker
+    region: virginia
+    plan: starter
+    schedule: "0 16 * * *"
+    dockerfilePath: ./Dockerfile
+    dockerCommand: 'python scheduler/run_daily.py'
+
+  # crn-d7dbjq67r5hc739v008g  autoDeploy=no
+  - type: cron
+    name: cr-rescue-scraper-2
+    runtime: docker
+    region: virginia
+    plan: starter
+    schedule: "0 17 * * *"
+    dockerfilePath: ./Dockerfile
+    dockerCommand: 'python scheduler/run_daily.py'
+
+  # crn-d7dsenpf9bms738bpab0  autoDeploy=no
+  - type: cron
+    name: cr-rescue-scraper-3
+    runtime: docker
+    region: virginia
+    plan: starter
+    schedule: "0 18 * * *"
+    dockerfilePath: ./Dockerfile
+    dockerCommand: 'python scheduler/run_daily.py'
+
+  # crn-d7bv4628qa3s738mvo5g  autoDeploy=no
+  - type: cron
+    name: funeral-homes-cherry-road-health
+    runtime: docker
+    region: virginia
+    plan: starter
+    schedule: "30 22 * * *"
+    dockerfilePath: ./Dockerfile
+    dockerCommand: 'python scripts/cherry_road_health.py'
+
+  # crn-d8pr2hog4nts7388i390  autoDeploy=yes
+  - type: cron
+    name: funeral-homes-dashboard-keepwarm
+    runtime: docker
+    region: virginia
+    plan: starter
+    schedule: "*/12 * * * *"
+    dockerfilePath: ./Dockerfile
+    dockerCommand: 'python -u -c "import urllib.request,time; s=time.time(); urllib.request.urlopen(''https://cr-obituaries-dashboard.onrender.com/health-status.json'',timeout=120).read(); print(''warm in %.1fs''%(time.time()-s))"'
+
+  # crn-d8pot3v7f7vs73d6r310  autoDeploy=yes
+  - type: cron
+    name: funeral-homes-deploy-drift
+    runtime: docker
+    region: virginia
+    plan: starter
+    schedule: "45 22 * * *"
+    dockerfilePath: ./Dockerfile
+    dockerCommand: 'python -u scripts/check_deploy_drift.py --always'
+
+  # crn-d77j17aa214c73dcob6g  autoDeploy=yes
+  - type: cron
+    name: funeral-homes-health-telegram
+    runtime: docker
+    region: virginia
+    plan: starter
+    schedule: "0 21 * * *"
+    dockerfilePath: ./Dockerfile
+    dockerCommand: 'python scripts/daily_health_telegram.py'
+
+  # crn-d8ppqcegvqtc739e1ms0  autoDeploy=yes
+  - type: cron
+    name: funeral-homes-proxy-health
+    runtime: docker
+    region: virginia
+    plan: starter
+    schedule: "30 13 * * *"
+    dockerfilePath: ./Dockerfile
+    dockerCommand: 'python -u scripts/check_proxy_health.py'
+
+  # crn-d6li6f5m5p6s73chtqh0  autoDeploy=no
+  - type: cron
+    name: funeral-homes-scraper-1
+    runtime: docker
+    region: virginia
+    plan: starter
+    schedule: "0 6 * * *"
+    dockerfilePath: ./Dockerfile
+
+  # crn-d7a6qmshg0os73bd3ai0  autoDeploy=no
+  - type: cron
+    name: funeral-homes-scraper-10
+    runtime: docker
+    region: virginia
+    plan: starter
+    schedule: "0 10 * * *"
+    dockerfilePath: ./Dockerfile
+
+  # crn-d86kkoojs32c73ephgt0  autoDeploy=no
+  - type: cron
+    name: funeral-homes-scraper-11
+    runtime: docker
+    region: virginia
+    plan: starter
+    schedule: "0 11 * * *"
+    dockerfilePath: ./Dockerfile
+
+  # crn-d8707mjtqb8s7381kfhg  autoDeploy=no
+  - type: cron
+    name: funeral-homes-scraper-12
+    runtime: docker
+    region: virginia
+    plan: starter
+    schedule: "0 12 * * *"
+    dockerfilePath: ./Dockerfile
+
+  # crn-d74anl0ule4c73ev39n0  autoDeploy=no
+  - type: cron
+    name: funeral-homes-scraper-2
+    runtime: docker
+    region: virginia
+    plan: starter
+    schedule: "0 6 * * *"
+    dockerfilePath: ./Dockerfile
+
+  # crn-d74anlhr0fns73csidgg  autoDeploy=no
+  - type: cron
+    name: funeral-homes-scraper-3
+    runtime: docker
+    region: virginia
+    plan: starter
+    schedule: "0 7 * * *"
+    dockerfilePath: ./Dockerfile
+
+  # crn-d74anm5m5p6s73f49ue0  autoDeploy=no
+  - type: cron
+    name: funeral-homes-scraper-4
+    runtime: docker
+    region: virginia
+    plan: starter
+    schedule: "0 7 * * *"
+    dockerfilePath: ./Dockerfile
+
+  # crn-d77hgu7kijhs73fkqn3g  autoDeploy=no
+  - type: cron
+    name: funeral-homes-scraper-5
+    runtime: docker
+    region: virginia
+    plan: starter
+    schedule: "0 8 * * *"
+    dockerfilePath: ./Dockerfile
+
+  # crn-d7a6qkbuibrs73fr5pj0  autoDeploy=no
+  - type: cron
+    name: funeral-homes-scraper-6
+    runtime: docker
+    region: virginia
+    plan: starter
+    schedule: "0 8 * * *"
+    dockerfilePath: ./Dockerfile
+
+  # crn-d7a6ql5m5p6s73f253tg  autoDeploy=no
+  - type: cron
+    name: funeral-homes-scraper-7
+    runtime: docker
+    region: virginia
+    plan: starter
+    schedule: "0 9 * * *"
+    dockerfilePath: ./Dockerfile
+
+  # crn-d7a6qlggjchc739v4blg  autoDeploy=no
+  - type: cron
+    name: funeral-homes-scraper-8
+    runtime: docker
+    region: virginia
+    plan: starter
+    schedule: "0 9 * * *"
+    dockerfilePath: ./Dockerfile
+
+  # crn-d7a6qmbuibrs73dh6ukg  autoDeploy=no
+  - type: cron
+    name: funeral-homes-scraper-9
+    runtime: docker
+    region: virginia
+    plan: starter
+    schedule: "0 10 * * *"
+    dockerfilePath: ./Dockerfile
