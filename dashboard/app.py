@@ -193,8 +193,39 @@ def create_app():
             return ct_dt.strftime("%Y-%m-%d %I:%M %p CT")
         return str(dt)
 
+    @app.route("/livez")
+    def livez():
+        """LIVENESS -- is this process able to serve a request? Touches NO database.
+
+        This is what a platform restart trigger must point at. /health reaches
+        db99, which is shared by every project: pointing the restart trigger at a
+        database probe means another project exhausting the pool restart-loops
+        this service for a fault that is not ours and that a restart cannot fix.
+        """
+        return {"status": "alive", "service": "funeral-homes-dashboard"}, 200
+
     @app.route("/health")
     def health():
+        """READINESS -- can this service reach its database?
+
+        Until 2026-09-05 the exception handler here returned
+
+            {"status": "ok", "db": f"error: {e}"}
+
+        -- literally the word "ok" while reporting that the database was
+        unreachable, with an implicit HTTP 200. Every monitor that checks the
+        status field or the status code read a dead database as healthy. This
+        endpoint's entire job is to be believed, so it was the worst possible
+        place for that.
+
+        The contract now:
+            ok        200  the database answered
+            faulted   503  it did not
+
+        There is no `degraded` case here: this probe tests exactly one thing.
+        Restart-safety comes from /livez being the liveness endpoint, so a 503
+        here does not hand the platform a restart loop.
+        """
         # Render polls this constantly. Belt-and-braces on top of the
         # teardown net: a leak on this path accumulates around the clock.
         conn = None
@@ -204,9 +235,9 @@ def create_app():
             cur.execute("SELECT 1")
             cur.fetchone()
             cur.close()
-            return {"status": "ok", "db": "connected"}
+            return {"status": "ok", "db": "connected"}, 200
         except Exception as e:
-            return {"status": "ok", "db": f"error: {e}"}
+            return {"status": "faulted", "db": f"error: {e}"}, 503
         finally:
             if conn is not None:
                 try:
